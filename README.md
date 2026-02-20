@@ -65,8 +65,16 @@ This is a list of all the features that are planned for Muse:
   - [x] Album tracks.
   - [x] Album Play button
   - [x] Album Shuffle button
-- [x] **Player**: Full playback control with queue management.
-- [_] **Caching**: Cache data to reduce latency and bandwidth usage.
+- [-] **Player**: Full playback control with queue management.
+  - [x] Play/Pause
+  - [x] Seeking
+  - [-] Queue
+    - [x] Previous/Next
+    - [x] Change order of song
+    - [x] Shuffle
+    - [_] Repeat modes (single track, loop queue)
+  - [_] Volume control
+- [_] **Caching**: Cache data to reduce latency and bandwidth usage
 - [-] **Responsive Design**: Mobile-friendly layout with adaptive UI.
   > Mostly there, but there remain some random edge cases with small width windows.
   > Help needed on this one!

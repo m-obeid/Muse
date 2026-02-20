@@ -1,6 +1,45 @@
 import os
 import json
 from ytmusicapi import YTMusic
+import ytmusicapi.navigation
+
+# Monkeypatch ytmusicapi.navigation.nav to handle UI changes like musicImmersiveHeaderRenderer
+_original_nav = ytmusicapi.navigation.nav
+
+def robust_nav(root, items, none_if_absent=False):
+    if root is None:
+        return None
+    try:
+        current = root
+        for i, k in enumerate(items):
+            # Fallback for musicVisualHeaderRenderer -> musicImmersiveHeaderRenderer
+            if k == "musicVisualHeaderRenderer" and isinstance(current, dict) and k not in current and "musicImmersiveHeaderRenderer" in current:
+                k = "musicImmersiveHeaderRenderer"
+            
+            # Fallback for musicDetailHeaderRenderer -> musicResponsiveHeaderRenderer
+            if k == "musicDetailHeaderRenderer" and isinstance(current, dict) and k not in current and "musicResponsiveHeaderRenderer" in current:
+                k = "musicResponsiveHeaderRenderer"
+
+            # Fallback for missing 'runs' in things like subtitle
+            if k == "runs" and isinstance(current, dict) and k not in current:
+                if none_if_absent:
+                    return None
+                # If we expect runs[0].text, provide a dummy to continue navigation
+                if i < len(items) - 1 and items[i+1] == 0:
+                    current = [{"text": ""}]
+                    continue
+                else:
+                    current = []
+                    continue
+
+            current = current[k]
+        return current
+    except (KeyError, IndexError, TypeError):
+        if none_if_absent:
+            return None
+        return _original_nav(root, items, none_if_absent)
+
+ytmusicapi.navigation.nav = robust_nav
 
 class MusicClient:
     _instance = None
@@ -210,6 +249,18 @@ class MusicClient:
         print(f"--- API RESPONSE: get_album_browse_id({audio_playlist_id}) ---")
         print(json.dumps(res, indent=2))
         return res
+
+    def edit_playlist(self, playlist_id, **kwargs):
+        if not self.is_authenticated():
+            return None
+        try:
+            res = self.api.edit_playlist(playlist_id, **kwargs)
+            print(f"--- API RESPONSE: edit_playlist({playlist_id}) ---")
+            print(json.dumps(res, indent=2))
+            return res
+        except Exception as e:
+            print(f"Error editing playlist: {e}")
+            return None
 
     def validate_session(self):
         """

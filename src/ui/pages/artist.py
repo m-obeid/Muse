@@ -15,6 +15,7 @@ class ArtistPage(Adw.Bin):
         self.client = MusicClient()
         self.channel_id = None
         self.artist_name = ""
+        self.current_songs = []
         
         # Main Layout
         self.main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
@@ -31,23 +32,20 @@ class ArtistPage(Adw.Bin):
         
         # Main Clamp
         self.clamp = Adw.Clamp()
-        # Default max size (600) to match other pages
         
         content_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0) 
         content_box.set_margin_bottom(24)
-        # Mobile padding
         content_box.set_margin_start(12)
         content_box.set_margin_end(12)
         self.content_box = content_box
         
         # 1. Header Info (Banner Style)
-        # Banner Container
         self.banner_container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self.banner_container.set_vexpand(False)
         self.banner_container.set_hexpand(True)
         self.banner_container.set_size_request(-1, 260) 
         
-        # Banner Image (Rounded)
+        # Banner Image
         self.avatar = AsyncPicture() 
         self.avatar.set_hexpand(True)
         self.avatar.set_vexpand(True) 
@@ -55,23 +53,20 @@ class ArtistPage(Adw.Bin):
         self.avatar.set_valign(Gtk.Align.FILL)
         self.avatar.set_content_fit(Gtk.ContentFit.COVER)
         
-        # Wrapper for rounding
         self.banner_wrapper = Gtk.Box()
         self.banner_wrapper.set_overflow(Gtk.Overflow.HIDDEN)
-        self.banner_wrapper.add_css_class("card") # or rounded? card gives shadow too.
-        # Use a Card to round the banner for consistency.
+        self.banner_wrapper.add_css_class("card")
         self.banner_wrapper.set_hexpand(True)
         self.banner_wrapper.set_vexpand(True)
         self.banner_wrapper.append(self.avatar)
         
         self.banner_container.append(self.banner_wrapper)
-        
         content_box.append(self.banner_container)
         
         # Info Box
         self.info_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         self.info_box.set_margin_top(24)
-        self.info_box.set_margin_start(12) # Reduced internal margin since we have outer margin
+        self.info_box.set_margin_start(12)
         self.info_box.set_margin_end(12)
         
         self.name_label = Gtk.Label(label="Artist Name")
@@ -79,7 +74,6 @@ class ArtistPage(Adw.Bin):
         self.name_label.set_halign(Gtk.Align.START)
         self.info_box.append(self.name_label)
         
-        # Stats Row
         stats_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
         self.subscribers_label = Gtk.Label(label="")
         self.subscribers_label.add_css_class("title-4")
@@ -87,7 +81,6 @@ class ArtistPage(Adw.Bin):
         stats_box.append(self.subscribers_label)
         self.info_box.append(stats_box)
         
-        # ... (description, actions same) ...
         self.description_label = Gtk.Label(label="")
         self.description_label.add_css_class("body")
         self.description_label.set_wrap(True)
@@ -110,13 +103,11 @@ class ArtistPage(Adw.Bin):
         actions.append(self.subscribe_btn)
         
         self.info_box.append(actions)
-        
         content_box.append(self.info_box)
         
         # 2. Sections
         self.sections_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=32)
         self.sections_box.set_margin_top(12)
-        
         content_box.append(self.sections_box)
         
         self.clamp.set_child(content_box)
@@ -126,7 +117,6 @@ class ArtistPage(Adw.Bin):
         # Stack for Loading vs Content
         self.stack = Adw.ViewStack()
         
-        # Loading Page
         loading_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         loading_box.set_valign(Gtk.Align.CENTER)
         loading_box.set_halign(Gtk.Align.CENTER)
@@ -139,65 +129,6 @@ class ArtistPage(Adw.Bin):
         
         self.set_child(self.stack)    
 
-    def add_songs_section(self, title, items):
-        self.current_songs = items # Store for queue
-        
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        
-        lbl = Gtk.Label(label=title)
-        lbl.add_css_class("title-4")
-        lbl.set_halign(Gtk.Align.START)
-        box.append(lbl)
-        
-        list_box = Gtk.ListBox()
-        list_box.set_selection_mode(Gtk.SelectionMode.NONE)
-        list_box.add_css_class("boxed-list")
-        list_box.connect("row-activated", self.on_song_activated)
-        
-        for item in items[:5]: # Top 5
-            row = Adw.ActionRow()
-            row.set_title(item.get('title', 'Unknown'))
-            row.set_subtitle(item.get('album', {}).get('name', ''))
-            
-            # Thumb
-            thumb_url = item.get('thumbnails', [])[-1]['url'] if item.get('thumbnails') else None
-             
-            img = AsyncImage(url=thumb_url, size=40)
-            if not thumb_url:
-                 img.set_from_icon_name("media-optical-symbolic")
-            row.add_prefix(img)
-            
-            row.item_data = item
-            list_box.append(row)
-            
-        box.append(list_box)
-        self.sections_box.append(box)
-
-    def add_grid_section(self, title, items):
-        # ...
-        for item in items[:12]:
-            # Item Box
-            item_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-            
-            # Image
-            thumb_url = item.get('thumbnails', [])[-1]['url'] if item.get('thumbnails') else None
-            # AsyncImage with fixed dimensions if needed, or size?
-            # 160 is good for grid.
-            img = AsyncImage(url=thumb_url, size=130)
-            
-            # Rounding Wrapper
-            wrapper = Gtk.Box()
-            wrapper.set_overflow(Gtk.Overflow.HIDDEN)
-            wrapper.add_css_class("card") # Card implies rounding and shadow usually
-            wrapper.set_halign(Gtk.Align.CENTER)
-            wrapper.append(img)
-            
-            item_box.append(wrapper)
-            # ...
-        
-    # ... (Stray code removed)
-
-    # ... (load_artist, _fetch_artist same as before) ...
     def load_artist(self, channel_id, initial_name=None):
         self.channel_id = channel_id
         if initial_name:
@@ -228,7 +159,6 @@ class ArtistPage(Adw.Bin):
         self.name_label.set_label(self.artist_name)
         self.description_label.set_label(data.get('description') or '')
         
-        # Subscribers and Listeners
         subs = data.get('subscribers') or ''
         if subs:
             subs += " Subscribers"
@@ -244,11 +174,6 @@ class ArtistPage(Adw.Bin):
         
         thumbnails = data.get('thumbnails', [])
         if thumbnails:
-            # Use largest thumbnail for banner
-            # Ideally we want a banner image.
-            # Banner should be rectangular, not square.
-            # We can check 'visuals' -> 'header' -> 'image' in ytmusicapi if available?
-            # Or just use the thumbnail and hope.
             self.avatar.load_url(thumbnails[-1]['url'])
             
         # Clear Sections
@@ -275,6 +200,7 @@ class ArtistPage(Adw.Bin):
              self.add_grid_section("Videos", data['videos']['results'])
 
     def add_songs_section(self, title, items):
+        self.current_songs = items # Store for queue
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
         
         label = Gtk.Label(label=title)
@@ -284,18 +210,16 @@ class ArtistPage(Adw.Bin):
         
         list_box = Gtk.ListBox()
         list_box.add_css_class("boxed-list")
-        list_box.set_selection_mode(Gtk.SelectionMode.NONE) # Changed to NONE to handle activations manually or prevent selection bg
-        # ActionRow handles visual feedback. row-activated fires even with SelectionMode.NONE.
+        list_box.set_selection_mode(Gtk.SelectionMode.NONE)
         list_box.connect("row-activated", self.on_song_activated)
         
         for item in items[:5]: # Top 5
             row = Adw.ActionRow()
-            row.set_activatable(True) # Ensure it's activatable
+            row.set_activatable(True)
             
             song_title = item.get('title', 'Unknown')
             row.set_title(GLib.markup_escape_text(song_title))
             
-            # Subtitle logic
             album_name = item.get('album', {}).get('name') if isinstance(item.get('album'), dict) else item.get('album')
             if album_name == song_title:
                 album_name = "Single"
@@ -306,12 +230,9 @@ class ArtistPage(Adw.Bin):
             thumb_url = thumbnails[-1]['url'] if thumbnails else None
             
             img = AsyncImage(url=thumb_url, size=40)
-            
             if not thumb_url:
                  img.set_from_icon_name("media-optical-symbolic")
             row.add_prefix(img)
-            
-            # ActionRow activation handles playback.
             
             row.item_data = item
             list_box.append(row)
@@ -332,9 +253,8 @@ class ArtistPage(Adw.Bin):
         
         flow_box = Gtk.FlowBox()
         flow_box.set_valign(Gtk.Align.START)
-        # Mobile optimized settings
         flow_box.set_max_children_per_line(5) 
-        flow_box.set_min_children_per_line(2) # Force 2 columns
+        flow_box.set_min_children_per_line(2)
         flow_box.set_selection_mode(Gtk.SelectionMode.NONE)
         flow_box.set_column_spacing(0) 
         flow_box.set_row_spacing(0)
@@ -342,18 +262,14 @@ class ArtistPage(Adw.Bin):
         flow_box.set_activate_on_single_click(True)
         flow_box.connect("child-activated", self.on_grid_child_activated)
         
-        for item in items[:10]: # Limit to 10
-            # Adjust thumbnail if needed
+        for item in items[:10]:
             thumb_url = item.get('thumbnails', [])[-1]['url'] if item.get('thumbnails') else None
             
-            # Item Box (The content)
             item_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-            item_box.item_data = item # Attach data here
+            item_box.item_data = item
             
-            # Image
             img = AsyncImage(url=thumb_url, size=140)
             
-            # Rounding Wrapper
             wrapper = Gtk.Box()
             wrapper.set_overflow(Gtk.Overflow.HIDDEN)
             wrapper.add_css_class("card") 
@@ -362,7 +278,6 @@ class ArtistPage(Adw.Bin):
             
             item_box.append(wrapper)
             
-            # Label
             lbl = Gtk.Label(label=item.get('title', ''))
             lbl.set_ellipsize(Pango.EllipsizeMode.END)
             lbl.set_max_width_chars(20) 
@@ -371,12 +286,10 @@ class ArtistPage(Adw.Bin):
             lbl.set_justify(Gtk.Justification.CENTER)
             item_box.append(lbl)
             
-            # Append directly to FlowBox (it will be wrapped in FlowBoxChild)
             flow_box.append(item_box)
             
-            # Context Menu for Grid Item
             gesture = Gtk.GestureClick()
-            gesture.set_button(3) # Right Click
+            gesture.set_button(3)
             gesture.connect("pressed", self.on_grid_right_click, item_box)
             item_box.add_controller(gesture)
             
@@ -386,18 +299,14 @@ class ArtistPage(Adw.Bin):
     def on_grid_right_click(self, gesture, n_press, x, y, item_box):
         if not hasattr(item_box, 'item_data'):
             return
-            
         data = item_box.item_data
-        
-        # Create Action Group on the widget
         group = Gio.SimpleActionGroup()
-        item_box.insert_action_group("item", group) # verify if 'item' namespace works for popover child
+        item_box.insert_action_group("item", group)
         
-        # Determine URL
         url = None
         if 'videoId' in data:
             url = f"https://music.youtube.com/watch?v={data['videoId']}"
-        elif 'audioPlaylistId' in data: # OLAK ID (Album)
+        elif 'audioPlaylistId' in data:
              url = f"https://music.youtube.com/playlist?list={data['audioPlaylistId']}"
         elif 'browseId' in data:
              bid = data['browseId']
@@ -427,41 +336,27 @@ class ArtistPage(Adw.Bin):
             popover = Gtk.PopoverMenu.new_from_model(menu)
             popover.set_parent(item_box)
             popover.set_has_arrow(False)
-            
             rect = Gdk.Rectangle()
             rect.x = int(x)
             rect.y = int(y)
             rect.width = 1
             rect.height = 1
             popover.set_pointing_to(rect)
-            
             popover.popup()
 
     def on_song_activated(self, listbox, row):
-        # Debug check
-        # print(f"DEBUG: Artist song activated. Row: {row}")
-        data = None
-        if hasattr(row, 'item_data'):
-            data = row.item_data
-        
+        data = getattr(row, 'item_data', None)
         if not data:
-            # print("DEBUG: Row has no item_data.")
             return
 
         if 'videoId' in data:
-            if hasattr(self, 'current_songs'):
-                 # Find index
+            if hasattr(self, 'current_songs') and self.current_songs:
                  start_index = 0
-                 # Items passed to add_songs_section are the same objects stored in current_songs usually.
                  for i, song in enumerate(self.current_songs):
                      if song.get('videoId') == data.get('videoId'):
                          start_index = i
                          break
                  
-                 # Prepare tracks for queue (normalize structure if needed)
-                 # Player expects: videoId, title, artist, thumb
-                 # Artist data from ytmusicapi 'songs' result: 'artists': [{'name': '...', 'id': '...'}]
-                      
                  queue_tracks = []
                  for song in self.current_songs:
                      artist_name = ", ".join([a.get('name', '') for a in song.get('artists', [])])
@@ -472,12 +367,9 @@ class ArtistPage(Adw.Bin):
                          'artist': artist_name,
                          'thumb': thumb
                      })
-                 
                  self.player.set_queue(queue_tracks, start_index)
             else:
                  print(f"DEBUG: 'current_songs' missing on {self}. Data: {data}")
-                 # Fallback: Play single track
-                 print("DEBUG: Playing single track as fallback")
                  artist_name = ", ".join([a.get('name', '') for a in data.get('artists', [])])
                  thumb = data.get('thumbnails', [])[-1]['url'] if data.get('thumbnails') else None
                  self.player.load_video(data['videoId'], data.get('title'), artist_name, thumb)
@@ -485,24 +377,19 @@ class ArtistPage(Adw.Bin):
             print("No videoId in song data", data)
 
     def on_grid_child_activated(self, flowbox, child):
-        # child is FlowBoxChild. get_child() returns our item_box
         item_box = child.get_child()
         if hasattr(item_box, 'item_data'):
             data = item_box.item_data
             if 'videoId' in data:
-                # Play video
-                print(f"Playing video: {data.get('title')}")
                 thumb = data.get('thumbnails', [])[-1]['url'] if data.get('thumbnails') else None
                 self.player.load_video(data['videoId'], data.get('title'), self.artist_name, thumb)
             elif 'browseId' in data:
-                 # Open Album/Single
                  self.open_playlist_callback(data['browseId'], {
                      'title': data.get('title'),
                      'thumb': data.get('thumbnails', [])[-1]['url'] if data.get('thumbnails') else None,
                      'author': self.artist_name
                  })
 
-    # ... (rest same) ...
     def on_shuffle_clicked(self, btn):
         if hasattr(self, 'current_songs') and self.current_songs:
             queue_tracks = []
@@ -515,7 +402,6 @@ class ArtistPage(Adw.Bin):
                     'artist': artist_name,
                     'thumb': thumb
                 })
-             
             self.player.set_queue(queue_tracks, -1, shuffle=True)
 
     def _on_scroll(self, vadjust):

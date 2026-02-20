@@ -24,7 +24,9 @@ class Player(GObject.Object):
             'format': 'bestaudio/best',
             'quiet': True,
             'noplaylist': True,
-            'extract_flat': False
+            'extract_flat': False,
+            'js_runtimes': {'node': {}},
+            'remote_components': ['ejs:github']
         }
         
         self.bus = self.player.get_bus()

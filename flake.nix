@@ -27,6 +27,7 @@
               python311Packages.ytmusicapi
               python311Packages.yt-dlp
               python311Packages.requests
+              nodejs
             ];
           shellHook = ''
             python --version

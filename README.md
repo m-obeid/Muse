@@ -116,7 +116,7 @@ Currently, there are three options for installing Muse:
 
 2. Install Python dependencies within a virtual environment:
    ```bash
-   python3 -m venv .venv
+   python3 -m venv .venv --system-site-packages
    source .venv/bin/activate
    pip install -r requirements.txt
    ```

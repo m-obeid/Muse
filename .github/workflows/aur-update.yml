@@ -1,0 +1,36 @@
+name: Update AUR
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  aur:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Update pkgver in PKGBUILD
+        run: |
+          cd aur-package
+          # Get count and short hash from git
+          COUNT=$(git rev-list --count HEAD)
+          HASH=$(git rev-parse --short HEAD)
+          NEW_VER="r$COUNT.$HASH"
+          # Update pkgver in PKGBUILD
+          sed -i "s/^pkgver=.*/pkgver=$NEW_VER/" PKGBUILD
+          sed -i "s/^pkgrel=.*/pkgrel=1/" PKGBUILD
+          echo "Updated pkgver to $NEW_VER and reset pkgrel to 1"
+
+      - name: Publish AUR package
+        uses: KSXGitHub/github-actions-deploy-aur@v3
+        with:
+          pkgname: mixtapes-git
+          pkgbuild: aur-package/PKGBUILD
+          commit_username: ${{ github.repository_owner }}
+          commit_email: ${{ github.repository_owner }}@users.noreply.github.com
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: "Update to ${{ github.sha }}"

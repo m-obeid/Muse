@@ -3,12 +3,12 @@
   <id>com.pocoguy.Muse</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
-  <name>Muse</name>
+  <name>Mixtapes</name>
   <summary>A modern, Linux-first YouTube Music player</summary>
   
   <description>
     <p>
-      Muse is a YouTube Music player built with GTK4 and Libadwaita for Linux.
+      Mixtapes is a YouTube Music player built with GTK4 and Libadwaita for Linux.
     </p>
     <p>
       Note: This software is in alpha stage. It is not affiliated with YouTube or Google.

@@ -95,7 +95,7 @@ If you got any more ideas or bug reports, feel free to open an issue.
 ## Prerequisites
 
 - Python 3.10 or higher
-- Deno (needed for yt-dlp-ejs, helps with playback issues)
+- Node.js (needed for yt-dlp-ejs, helps with playback issues)
 - GTK4 (including development headers)
 - Libadwaita (including development headers)
 - GStreamer plugins (base, good, bad, ugly)
@@ -123,11 +123,14 @@ Before you start, make sure to install the dependencies.
 
 Here are install commands for some common package managers:
 
-- Arch Linux: `sudo pacman -S git python-pip deno gtk4 libadwaita gst-plugins-base gst-plugins-good gst-plugins-bad gst-plugins-ugly`
+- Arch Linux: `sudo pacman -S git python-pip nodejs gtk4 libadwaita gst-plugins-base gst-plugins-good gst-plugins-bad gst-plugins-ugly`
 
-- Debian/Ubuntu: `sudo apt install git python3 python3-pip deno libgtk-4-dev libadwaita-1-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly`
+- Debian/Ubuntu: `sudo apt install git python3 python3-pip nodejs libgtk-4-dev libadwaita-1-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly`
 
-- Fedora: `sudo dnf install git python3 python3-pip deno gtk4-devel adwaita-gtk4-devel gstreamer1-plugins-base gstreamer1-plugins-good gstreamer1-plugins-bad gstreamer1-plugins-ugly`
+> [!NOTE]
+> If you are on Debian/Ubuntu, you should probably use Flatpak to avoid outdated packages.
+
+- Fedora: `sudo dnf install git python3 python3-pip nodejs gtk4-devel adwaita-gtk4-devel gstreamer1-plugins-base gstreamer1-plugins-good gstreamer1-plugins-bad gstreamer1-plugins-ugly`
 
 1. Clone the repository:
 

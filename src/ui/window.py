@@ -198,14 +198,6 @@ class MainWindow(Adw.ApplicationWindow):
         # 5. Set the window content to the BottomSheet
         self.set_content(self.bottom_sheet)
 
-        from ui.expanded_player import ExpandedPlayer
-
-        self.expanded_player = ExpandedPlayer(self.player)
-        self.expanded_player.add_css_class("player-drawer")
-        self.expanded_player.connect(
-            "dismiss", lambda x: self.player_drawer_revealer.set_reveal_child(False)
-        )
-
         # Initialize Pages (Must be before breakpoint)
         self.init_pages()
 
@@ -365,6 +357,9 @@ class MainWindow(Adw.ApplicationWindow):
         client = MusicClient()
         if client.logout():
             prefs_window.close()
+            # Clear library UI immediately
+            if hasattr(self, "library_page"):
+                self.library_page.clear()
             # Trigger auth check to show login dialog
             self.check_auth()
 

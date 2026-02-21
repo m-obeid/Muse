@@ -1,4 +1,5 @@
 PyGObject
 ytmusicapi
 yt-dlp
+yt-dlp-ejs
 requests

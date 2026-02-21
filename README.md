@@ -1,4 +1,4 @@
-# Muse
+# Mixtapes (formerly Muse)
 
 A modern, Linux-first YouTube Music player.
 
@@ -7,13 +7,13 @@ A modern, Linux-first YouTube Music player.
 > It is also not affiliated with, funded, authorized, endorsed, or in any way associated with YouTube, Google LLC or any of their affiliates and subsidiaries.
 > Help is always appreciated, so feel free to open an issue or a pull request.
 
-![Muse](screenshots/1.png)
-![Muse](screenshots/2.png)
-![Muse](screenshots/3.png)
+![Mixtapes](screenshots/1.png)
+![Mixtapes](screenshots/2.png)
+![Mixtapes](screenshots/3.png)
 
 ## Roadmap
 
-This is a list of all the features that are planned for Muse:
+This is a list of all the features that are planned for Mixtapes:
 
 [x] means the feature is implemented.
 [-] means the feature is partially implemented.
@@ -77,6 +77,7 @@ This is a list of all the features that are planned for Muse:
 - [-] **Responsive Design**: Mobile-friendly layout with adaptive UI.
   > Mostly there, but there remain some random edge cases with small width windows.
   > Help needed on this one!
+  > Desktop also needs to use the empty space better.
 - [_] **MPRIS Support**: Control playback from system media controls.
 - [_] **Discord RPC**: Show your current track on Discord.
 - [_] **Lyrics**: View synchronized lyrics, maybe even using BetterLyrics API.
@@ -85,27 +86,48 @@ This is a list of all the features that are planned for Muse:
 - [_] **Radio / Mixes**: Start a radio station from a song or artist.
 - [_] **Dedicated Data Directory**: Move all the data like cookies, cache, etc. to a dedicated directory instead of the project root directory.
 - [_] **Background Playback**: Play music in the background, even when the main window is closed.
-- [_] **Flatpak**: Package Muse as a Flatpak.
-- [_] **AppImage**: Package Muse as an AppImage.
-- [_] **AUR**: Package Muse as an AUR package.
+- [_] **Flatpak**: Package Mixtapes as a Flatpak.
+- [_] **AppImage**: Package Mixtapes as an AppImage.
+- [_] **AUR**: Package Mixtapes as an AUR package.
 
 If you got any more ideas or bug reports, feel free to open an issue.
 
 ## Prerequisites
 
 - Python 3.10 or higher
+- Deno (needed for yt-dlp-ejs, helps with playback issues)
 - GTK4 (including development headers)
 - Libadwaita (including development headers)
 - GStreamer plugins (base, good, bad, ugly)
 
 ## Installation
 
-Currently, there are three options for installing Muse:
+Currently, there are three options for installing Mixtapes:
+
 - From Source
 - Using a Nix flake
 - Using flatpak-builder
 
+### AUR
+
+If you are using Arch Linux, you can install Mixtapes from the AUR.
+An AUR helper like `yay` or `paru` is recommended.
+
+```bash
+yay -S mixtapes-git
+```
+
 ### From Source
+
+Before you start, make sure to install the dependencies.
+
+Here are install commands for some common package managers:
+
+- Arch Linux: `sudo pacman -S git python-pip deno gtk4 libadwaita gst-plugins-base gst-plugins-good gst-plugins-bad gst-plugins-ugly`
+
+- Debian/Ubuntu: `sudo apt install git python3 python3-pip deno libgtk-4-dev libadwaita-1-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly`
+
+- Fedora: `sudo dnf install git python3 python3-pip deno gtk4-devel adwaita-gtk4-devel gstreamer1-plugins-base gstreamer1-plugins-good gstreamer1-plugins-bad gstreamer1-plugins-ugly`
 
 1. Clone the repository:
 
@@ -115,11 +137,25 @@ Currently, there are three options for installing Muse:
    ```
 
 2. Install Python dependencies within a virtual environment:
+
    ```bash
    python3 -m venv .venv --system-site-packages
    source .venv/bin/activate
    pip install -r requirements.txt
+   chmod +x start.sh
    ```
+
+3. Run the app:
+   ```bash
+   ./start.sh
+   ```
+
+To pull the latest changes:
+
+```bash
+git pull
+pip install -r requirements.txt
+```
 
 ### Nix
 
@@ -129,17 +165,20 @@ See [here](https://github.com/m-obeid/Muse/pull/2#issue-3965386248)
 ### Flatpak
 
 1. Install Flatpak and required runtimes:
+
    ```bash
    flatpak install flathub org.gnome.Platform//49 org.gnome.Sdk//49
    ```
 
 2. Clone the repository:
+
    ```bash
    git clone https://github.com/m-obeid/Muse.git
    cd Muse
    ```
 
 3. Build and install:
+
    ```bash
    flatpak-builder --user --install --force-clean build-dir com.pocoguy.Muse.yaml
    ```
@@ -150,7 +189,7 @@ See [here](https://github.com/m-obeid/Muse/pull/2#issue-3965386248)
    ```
 
 **Authentication:** Open your browser, go to YouTube Music, and copy request headers as described [here](https://ytmusicapi.readthedocs.io/en/stable/setup/browser.html).
-Then run `flatpak run --command=sh com.pocoguy.Muse` and inside the shell run `mkdir -p ~/data/muse && cd ~/data/muse && ytmusicapi browser`.
+Then run `flatpak run --command=sh com.pocoguy.Muse` and inside the shell run `mkdir -p ~/data/Muse && cd ~/data/Muse && ytmusicapi browser`.
 Paste the headers and press Ctrl-D.
 
 ## Usage

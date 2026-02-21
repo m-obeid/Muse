@@ -26,6 +26,7 @@
               python311Packages.pygobject3
               python311Packages.ytmusicapi
               python311Packages.yt-dlp
+              python311Packages.yt-dlp-ejs
               python311Packages.requests
               nodejs
             ];

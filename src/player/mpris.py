@@ -175,8 +175,8 @@ class MuseMprisAdapter(MprisAdapter):
             if self.player.current_queue_index == -1 or not self.player.queue:
                 return {
                     "mpris:trackid": "/com/pocoguy/Muse/track/none",
-                    "xesam:title": "Not Playing",
-                    "xesam:artist": ["Unknown"],
+                    "xesam:title": "",
+                    "xesam:artist": [],
                 }
 
             track = self.player.queue[self.player.current_queue_index]
@@ -232,12 +232,15 @@ class MuseMprisAdapter(MprisAdapter):
 
 
 class MuseEventAdapter(EventAdapter):
-    def __init__(self, root, player_interface, playlists=None, tracklist=None):
-        super().__init__(root, player_interface, playlists, tracklist)
-
     def emit_all(self):
-        try:
-            self.on_player_all()
-            self.on_root_all()
-        except Exception as e:
-            print(f"MPRIS: Error emitting all: {e}")
+        # Useful for a full refresh (e.g., when a new client connects)
+        self.on_player_all()
+        self.on_root_all()
+
+    def on_track_changed(self):
+        # Specifically tells D-Bus the Metadata property has changed
+        self.emit_changes("Player", ["Metadata", "CanGoNext", "CanGoPrevious"])
+
+    def on_status_changed(self):
+        # Specifically tells D-Bus the PlaybackStatus property has changed
+        self.emit_changes("Player", ["PlaybackStatus"])

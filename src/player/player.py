@@ -95,16 +95,19 @@ class Player(GObject.Object):
 
     def _on_mpris_state_changed(self, obj, state):
         if hasattr(self, "mpris_events"):
-            self.mpris_events.on_playback()
-            self.mpris_events.on_playpause()  # Ensure play/pause button state updates
-            self.mpris_events.on_options()  # Significant: shuffle is an 'option'
+            # Explicitly tell the server the PlaybackStatus changed
+            self.mpris_events.on_playpause()
+            # Update metadata because length or 'CanGoNext' might have changed
             self.mpris_events.on_player_all()
 
     def _on_mpris_metadata_changed(
         self, obj, title, artist, thumb, video_id, like_status
     ):
-        self.mpris_events.on_title()  # This triggers Metadata refresh in mpris-server
-        self.mpris_events.on_player_all()  # Full property sync on metadata change
+        if hasattr(self, "mpris_events"):
+            # Trigger the 'Metadata' property update
+            self.mpris_events.on_title()
+            # Update UI-related flags like CanGoNext/Previous
+            self.mpris_events.on_player_all()
 
     def _on_mpris_progression(self, obj, pos, dur):
         # We don't usually emit D-Bus signals for every progression tick
@@ -241,7 +244,7 @@ class Player(GObject.Object):
         self.original_queue = []
         self.current_queue_index = -1
         self.emit("state-changed", "stopped")
-        self.emit("metadata-changed", "Not Playing", "", "", "", "INDIFFERENT")
+        self.emit("metadata-changed", "", "", "", "", "INDIFFERENT")
 
     def play_queue_index(self, index):
         if 0 <= index < len(self.queue):
@@ -758,6 +761,10 @@ class Player(GObject.Object):
                 GObject.idle_add(self._play_current_index)
             else:
                 GObject.idle_add(self.next)
+        elif t == Gst.MessageType.ASYNC_DONE:
+            # The stream is actually loaded and ready
+            if hasattr(self, "mpris_events"):
+                self.mpris_events.on_player_all()  # Refresh duration and status
         elif t == Gst.MessageType.ERROR:
             err, debug = message.parse_error()
             print(f"Error: {err}, {debug}")
@@ -779,38 +786,42 @@ class Player(GObject.Object):
         return self._current_logical_state
 
     def update_position(self):
-        # Prevent race condition with seek
         import time
 
-        if time.time() - self.last_seek_time < 1.0:
+        now = time.time()
+
+        # 1. Protection during seek/load
+        # If we are loading or just sought, don't trust GStreamer yet
+        if self._is_loading or (now - self.last_seek_time < 0.8):
             return True
 
-        # get_state returns (success, current_state, pending_state)
         ret, state, pending = self.player.get_state(0)
-        if state == Gst.State.PLAYING or state == Gst.State.PAUSED:
-            # Query duration always to ensure accuracy or at least retry
-            ret, dur = self.player.query_duration(Gst.Format.TIME)
-            if ret:
-                new_dur = dur / Gst.SECOND
-                if new_dur != self.duration:
+        if state in [Gst.State.PLAYING, Gst.State.PAUSED]:
+            # 2. Update Duration if it changed (vital for MPRIS progress bar scale)
+            success_dur, dur_nanos = self.player.query_duration(Gst.Format.TIME)
+            if success_dur:
+                new_dur = dur_nanos / Gst.SECOND
+                if (
+                    abs(new_dur - self.duration) > 0.1
+                ):  # Threshold to avoid float jitter
                     self.duration = new_dur
                     if hasattr(self, "mpris_events"):
-                        self.mpris_events.on_title()  # Refresh metadata with new length
+                        self.mpris_events.on_title()  # Syncs 'mpris:length'
 
-            # Query position
-            ret, pos = self.player.query_position(Gst.Format.TIME)
-            if ret:
-                current_time = pos / Gst.SECOND
+            # 3. Update Position
+            success_pos, pos_nanos = self.player.query_position(Gst.Format.TIME)
+            if success_pos:
+                current_time = pos_nanos / Gst.SECOND
 
-                # Suppress updates briefly after seek to prevent "jumping back"
-                import time
+                # Update the Adapter's cache immediately
+                if hasattr(self, "mpris_adapter"):
+                    self.mpris_adapter._last_pos = pos_nanos // 1000
 
-                if time.time() - getattr(self, "last_seek_time", 0) < 0.5:
-                    return True
-
-                # If duration is still unknown or invalid, use current_time + ? or just don't crash
+                # 4. Emit progression for local UI
+                # We use float(d) to ensure the UI progress bar has a max value
                 d = self.duration if self.duration > 0 else 0
                 self.emit("progression", float(current_time), float(d))
+
         return True
 
     def seek(self, position, flush=True):
@@ -831,6 +842,7 @@ class Player(GObject.Object):
             flags,
             int(position * Gst.SECOND),
         )
+
         if hasattr(self, "mpris_events"):
             self.mpris_events.on_seek(int(position * 1_000_000))
 

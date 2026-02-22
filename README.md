@@ -70,7 +70,7 @@ This is a list of all the features that are planned for Mixtapes:
     - [x] Previous/Next
     - [x] Change order of song
     - [x] Shuffle
-    - [_] Repeat modes (single track, loop queue)
+    - [x] Repeat modes (single track, loop queue)
   - [x] Volume control
 - [_] **Caching**: Cache data to reduce latency and bandwidth usage
 - [-] **Responsive Design**: Mobile-friendly layout with adaptive UI.
@@ -79,7 +79,8 @@ This is a list of all the features that are planned for Mixtapes:
 - [_] **Cover Art Tint**: Tint libadwaita to match the cover art of the current song, kinda like Material You.
 - [_] **Discord RPC**: Show your current track on Discord.
 - [_] **Lyrics**: View synchronized lyrics, maybe even using BetterLyrics API.
-- [_] **Settings**: Configure app preferences (theme, audio quality, etc.).
+- [-] **Settings**: Configure app preferences (theme, audio quality, etc.).
+  > Currently, it only has an option to sign out.
 - [_] **Download Support**: Download tracks for offline playback, even as local files.
 - [_] **Radio / Mixes**: Start a radio station from a song or artist.
 - [_] **Dedicated Data Directory**: Move all the data like cookies, cache, etc. to a dedicated directory instead of the project root directory.

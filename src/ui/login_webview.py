@@ -21,7 +21,7 @@ class WebkitLoginView(Adw.Bin):
         self.webview = WebKit.WebView()
         settings = self.webview.get_settings()
 
-        # Google blocks non-standard browsers. We must masquerade as standard Chrome Windows and enable features it expects.
+        # Google blocks non-standard browsers. We must masquerade as standard browser and enable features it expects.
         settings.set_user_agent(
             "Mozilla/5.0 (X11; Linux x86_64; rv:147.0) Gecko/20100101 Firefox/147.0"
         )

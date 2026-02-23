@@ -4,6 +4,7 @@ runtime-version: '49'
 sdk: org.gnome.Sdk
 sdk-extensions:
   - org.freedesktop.Sdk.Extension.node24
+    version: 24.08
 command: muse
 
 # Allow network access during build for pip downloads

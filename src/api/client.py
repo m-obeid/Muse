@@ -403,11 +403,76 @@ class MusicClient:
         if os.path.exists(self.auth_path):
             try:
                 os.remove(self.auth_path)
-                print(f"Deleted auth file at {self.auth_path}")
+                print(f"Removed auth file at {self.auth_path}")
             except Exception as e:
-                print(f"Error deleting auth file: {e}")
+                print(f"Could not remove auth file: {e}")
 
         self.api = YTMusic()
         self._is_authed = False
         print("Logged out. API reset to unauthenticated mode.")
         return True
+
+    def edit_playlist(
+        self, playlist_id, title=None, description=None, privacy=None, moveItem=None
+    ):
+        if not self.is_authenticated():
+            return False
+        try:
+            res = self.api.edit_playlist(
+                playlist_id,
+                title=title,
+                description=description,
+                privacyStatus=privacy,
+                moveItem=moveItem,
+            )
+            print(f"--- API RESPONSE: edit_playlist({playlist_id}) ---")
+            print(json.dumps(res, indent=2))
+            return True
+        except Exception as e:
+            print(f"Error editing playlist: {e}")
+            return False
+
+    def set_playlist_thumbnail(self, playlist_id, image_path):
+        """
+        Sets a custom thumbnail for a playlist.
+        Uses the internal endpoint 'playlist/set_playlist_thumbnail'.
+        """
+        # shit
+        if not self.is_authenticated():
+            return False
+        try:
+            import base64
+            with open(image_path, "rb") as f:
+                img_data = f.read()
+                b64_img = base64.b64encode(img_data).decode("utf-8")
+
+            # common internal payload formats
+            # Format A: {"playlistId": "...", "image": "base64..."}
+            # Format B: {"playlistId": "...", "image": {"encodedImage": "base64..."}}
+            # Format C: {"playlistId": "...", "image": {"image": "base64..."}}
+            formats = [
+                {"playlistId": playlist_id, "image": b64_img},
+                {"playlistId": playlist_id, "image": {"encodedImage": b64_img}},
+                {"playlistId": playlist_id, "image": {"image": b64_img}},
+            ]
+
+            success = False
+            for i, body in enumerate(formats):
+                print(f"DEBUG: trying thumbnail upload format {chr(65+i)} for {playlist_id}")
+                try:
+                    res = self.api._send_request("playlist/set_playlist_thumbnail", body)
+                    print(f"DEBUG: Format {chr(65+i)} response: {res}")
+                    success = True
+                    if isinstance(res, dict) and res.get("status") == "SUCCEEDED":
+                        break
+                except Exception as e:
+                    print(f"DEBUG: Format {chr(65+i)} failed: {e}")
+                    if "Expecting value" in str(e): # in some internal endpoints, empty response means success.. 
+                        success = True
+                        break
+                    continue
+            
+            return success
+        except Exception as e:
+            print(f"Error setting playlist thumbnail: {e}")
+            return False

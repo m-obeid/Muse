@@ -38,6 +38,7 @@ class PlaylistPage(Adw.Bin):
         self.client = MusicClient()
         self.playlist_id = None
         self.playlist_title_text = ""
+        self.playlist_description_text = ""
 
         # ── 1. Header UI Container ────────────────────────────────────────────
         self.header_container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
@@ -58,6 +59,11 @@ class PlaylistPage(Adw.Bin):
         self.cover_wrapper.set_valign(Gtk.Align.START)
         self.cover_wrapper.append(self.cover_img)
         self.header_info_box.append(self.cover_wrapper)
+
+        cover_gesture = Gtk.GestureClick()
+        cover_gesture.set_button(3)
+        cover_gesture.connect("pressed", self.on_cover_right_click)
+        self.cover_wrapper.add_controller(cover_gesture)
 
         self.details_col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.details_col.set_valign(Gtk.Align.CENTER)
@@ -126,6 +132,17 @@ class PlaylistPage(Adw.Bin):
         shuffle_btn.set_size_request(48, 48)
         shuffle_btn.connect("clicked", self.on_shuffle_clicked)
         actions_box.append(shuffle_btn)
+
+        self.edit_btn = Gtk.Button()
+        self.edit_btn.set_icon_name("document-edit-symbolic")
+        self.edit_btn.add_css_class("circular")
+        self.edit_btn.set_valign(Gtk.Align.CENTER)
+        self.edit_btn.set_halign(Gtk.Align.CENTER)
+        self.edit_btn.set_size_request(48, 48)
+        self.edit_btn.set_visible(False)
+        self.edit_btn.set_tooltip_text("Edit Playlist")
+        self.edit_btn.connect("clicked", self.on_edit_clicked)
+        actions_box.append(self.edit_btn)
 
         self.sort_dropdown = Gtk.DropDown.new_from_strings(
             ["Default", "Title (A-Z)", "Artist (A-Z)", "Album (A-Z)"]
@@ -774,6 +791,7 @@ class PlaylistPage(Adw.Bin):
         self.content_spinner.set_visible(False)
 
         self.playlist_title_text = title
+        self.playlist_description_text = description
         self.playlist_name_label.set_label(title)
 
         if description:
@@ -792,6 +810,12 @@ class PlaylistPage(Adw.Bin):
 
         self.empty_label.set_visible(not has_tracks)
         self.sort_row.set_visible(has_tracks and not is_album)
+
+        # Show edit button if it's an owned playlist
+        is_editable = self.client.is_authenticated() and not is_album and self.playlist_id != "LM"
+        # We can further check for 'privacy' in data to confirm ownership
+        # In ytmusicapi, 'privacy' is usually only returned for owned playlists, obviously.
+        self.edit_btn.set_visible(is_editable)
 
         if thumbnails and not append:
             url = thumbnails[-1]["url"]
@@ -994,18 +1018,9 @@ class PlaylistPage(Adw.Bin):
                     if hasattr(root, "open_artist"):
                         root.open_artist(aid, name)
 
-        def set_as_cover_action(action, param):
-            set_id = data.get("setVideoId")
-            vid = data.get("id")
-            if self.playlist_id and set_id:
-                thread = threading.Thread(target=self._move_to_top, args=(set_id, vid))
-                thread.daemon = True
-                thread.start()
-
         for name, cb in [
             ("copy_link", copy_link_action),
             ("goto_artist", goto_artist_action),
-            ("set_cover", set_as_cover_action),
         ]:
             a = Gio.SimpleAction.new(name, None)
             a.connect("activate", cb)
@@ -1020,15 +1035,6 @@ class PlaylistPage(Adw.Bin):
             and full_track_data["artists"][0].get("id")
         ):
             menu_model.append("Go to Artist", "row.goto_artist")
-        if (
-            self.client.is_authenticated()
-            and self.playlist_id
-            and not (
-                self.playlist_id.startswith("MPRE")
-                or self.playlist_id.startswith("OLAK")
-            )
-        ):
-            menu_model.append("Set as Playlist Cover", "row.set_cover")
 
         if menu_model.get_n_items() > 0:
             popover = Gtk.PopoverMenu.new_from_model(menu_model)
@@ -1104,25 +1110,116 @@ class PlaylistPage(Adw.Bin):
             )
         )
 
-    # ── Move to top ───────────────────────────────────────────────────────────
+    # ── Edit Playlist ─────────────────────────────────────────────────────────
 
-    def _move_to_top(self, set_video_id, video_id):
-        print(
-            f"Moving {video_id} (setVideoId: {set_video_id}) to top of {self.playlist_id}"
-        )
-        try:
-            if not self.original_tracks:
-                return
-            first_set_id = self.original_tracks[0].get("setVideoId")
-            if first_set_id == set_video_id:
-                print("Item already at top.")
-                return
-            self.client.edit_playlist(
-                self.playlist_id, moveItem=(set_video_id, first_set_id)
-            )
-            GLib.idle_add(self.load_playlist, self.playlist_id)
-        except Exception as e:
-            print(f"Error moving track: {e}")
+    def on_edit_clicked(self, btn):
+        self._show_edit_dialog()
+
+    def on_cover_right_click(self, gesture, n_press, x, y):
+        if self.edit_btn.get_visible():
+            self._show_edit_dialog()
+
+    def _show_edit_dialog(self):
+        window = Adw.Window(transient_for=self.get_native())
+        window.set_modal(True)
+        window.set_default_size(500, -1)
+        window.set_title("Edit Playlist")
+
+        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        window.set_content(main_box)
+
+        header = Adw.HeaderBar()
+        main_box.append(header)
+
+        cancel_btn = Gtk.Button(label="Cancel")
+        cancel_btn.connect("clicked", lambda b: window.destroy())
+        header.pack_start(cancel_btn)
+
+        save_btn = Gtk.Button(label="Save")
+        save_btn.add_css_class("suggested-action")
+        header.pack_end(save_btn)
+
+        page = Adw.PreferencesPage()
+        main_box.append(page)
+
+        group = Adw.PreferencesGroup(title="Playlist Details")
+        group.set_margin_start(12)
+        group.set_margin_end(12)
+        group.set_margin_top(12)
+        group.set_margin_bottom(12)
+        page.add(group)
+
+        # Title
+        title_row = Adw.EntryRow(title="Title")
+        title_row.set_text(self.playlist_title_text)
+        group.add(title_row)
+
+        # Description
+        desc_row = Adw.EntryRow(title="Description")
+        desc_row.set_text(self.playlist_description_text)
+        group.add(desc_row)
+
+        # Cover Art
+        cover_row = Adw.ActionRow(title="Playlist Cover")
+        cover_row.set_subtitle("No file selected")
+        group.add(cover_row)
+
+        self._selected_cover_path = None
+
+        def on_choose_file_clicked(btn):
+            file_dialog = Gtk.FileDialog(title="Select Cover Image")
+            filter_img = Gtk.FileFilter()
+            filter_img.set_name("Images")
+            filter_img.add_mime_type("image/jpeg")
+            filter_img.add_mime_type("image/png")
+            
+            filters = Gio.ListStore.new(Gtk.FileFilter)
+            filters.append(filter_img)
+            file_dialog.set_filters(filters)
+
+            def on_file_selected(dialog, result):
+                try:
+                    file = dialog.open_finish(result)
+                    if file:
+                        self._selected_cover_path = file.get_path()
+                        cover_row.set_subtitle(file.get_basename())
+                except Exception as e:
+                    print(f"Error selecting file: {e}")
+
+            file_dialog.open(window, None, on_file_selected)
+
+        choose_btn = Gtk.Button(label="Choose File...")
+        choose_btn.set_valign(Gtk.Align.CENTER)
+        choose_btn.add_css_class("pill")
+        choose_btn.connect("clicked", on_choose_file_clicked)
+        cover_row.add_suffix(choose_btn)
+
+        def on_save_clicked(btn):
+            new_title = title_row.get_text()
+            new_desc = desc_row.get_text()
+            img_path = getattr(self, "_selected_cover_path", None)
+
+            def save_job():
+                # 1. Update Metadata
+                if new_title != self.playlist_title_text or new_desc != self.playlist_description_text:
+                    print(f"DEBUG: Updating playlist metadata: {new_title}")
+                    self.client.edit_playlist(self.playlist_id, title=new_title, description=new_desc)
+                
+                # 2. Update Image
+                if img_path:
+                    print(f"DEBUG: Updating playlist thumbnail with {img_path}")
+                    self.client.set_playlist_thumbnail(self.playlist_id, img_path)
+                
+                # Refresh
+                GLib.idle_add(self.load_playlist, self.playlist_id)
+
+            thread = threading.Thread(target=save_job)
+            thread.daemon = True
+            thread.start()
+            window.destroy()
+
+        save_btn.connect("clicked", on_save_clicked)
+        window.present()
 
     def _fetch_remaining_for_queue(self):
         if getattr(self, "is_fully_fetched", False):

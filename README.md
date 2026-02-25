@@ -51,13 +51,11 @@ This is a list of all the features that are planned for Mixtapes:
   - [x] Playlist Shuffle button
   - [x] Playlist Order
   - [x] Playlist Cover Change
-    > Currently the playlist cover can be changed, however, changing it in the app isn't fully added.
+    > Currently the playlist cover can be changed via API, but, changing it in the app isn't fully working.
   - [_] Playlist Change Visibility
     > Currently the playlist visibility cannot be changed.
-  - [_] Playlist Change Description
-    > Currently the playlist description cannot be changed.
-  - [_] Playlist Change Name
-    > Currently the playlist name cannot be changed.
+  - [X] Playlist Change Description
+  - [X] Playlist Change Name
 - [x] **Album Page**: View and play albums.
   - [x] Basic album info.
   - [x] Album tracks.

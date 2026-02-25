@@ -7,7 +7,7 @@ import threading
 import random
 import os
 
-from mpris_server.server import Server
+from mprisify.server import Server
 from player.mpris import MuseMprisAdapter, MuseEventAdapter
 
 from api.client import MusicClient

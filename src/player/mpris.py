@@ -3,10 +3,10 @@ import gi
 
 gi.require_version("Gst", "1.0")
 from gi.repository import Gst
-from mpris_server.adapters import MprisAdapter
-from mpris_server.events import EventAdapter
-from mpris_server.base import Position, PlayState, Volume
-from mpris_server.enums import LoopStatus
+from mprisify.adapters import MprisAdapter
+from mprisify.events import EventAdapter
+from mprisify.base import Position, PlayState, Volume
+from mprisify.enums import LoopStatus
 
 
 class MuseMprisAdapter(MprisAdapter):

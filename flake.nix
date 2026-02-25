@@ -23,12 +23,13 @@
               gst_all_1.gst-plugins-bad
               gst_all_1.gst-plugins-ugly
               # Python dependencies
-              python311
-              python311Packages.pygobject3
-              python311Packages.ytmusicapi
-              python311Packages.yt-dlp
-              python311Packages.yt-dlp-ejs
-              python311Packages.requests
+              python314
+              python314Packages.pygobject3
+              python314Packages.ytmusicapi
+              python314Packages.yt-dlp
+              python314Packages.yt-dlp-ejs
+              python314Packages.requests
+              python314Packages.mprisify
               nodejs
             ];
           shellHook = ''

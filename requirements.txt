@@ -3,4 +3,4 @@ ytmusicapi
 yt-dlp
 yt-dlp-ejs
 requests
-mpris-server
+mprisify @ git+https://gitlab.com/zehkira/mprisify.git@v1.0.0

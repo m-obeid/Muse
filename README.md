@@ -112,8 +112,9 @@ If you got any more ideas or bug reports, feel free to open an issue.
 
 ## Installation
 
-Currently, there are three options for installing Mixtapes:
+Currently, there are 4 options for installing Mixtapes:
 
+- AUR
 - From Source
 - Using a Nix flake
 - Using flatpak-builder

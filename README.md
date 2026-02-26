@@ -1,15 +1,22 @@
-# Mixtapes (formerly Muse)
+# Mixtapes 
 
 A modern, Linux-first YouTube Music player.
+<br><small>formerly known as Muse</small>
 
 > [!NOTE]
 > This software is considered in alpha stage. Expect bugs and a lot of missing features.
 > It is also not affiliated with, funded, authorized, endorsed, or in any way associated with YouTube, Google LLC or any of their affiliates and subsidiaries.
 > Help is always appreciated, so feel free to open an issue or a pull request.
 
-![Mixtapes](screenshots/1.png)
-![Mixtapes](screenshots/2.png)
-![Mixtapes](screenshots/3.png)
+<div align="center">
+  <img src="screenshots/1.png" width="49%" /> <img src="screenshots/2.png" width="49%" />
+  <img src="screenshots/3.png" width="49%" /> <img src="screenshots/4.png" width="49%" />
+
+  <br/>
+
+<img src="screenshots/5.png" width="24%" /> <img src="screenshots/6.png" width="24%" /> <img src="screenshots/7.png" width="24%" /> <img src="screenshots/8.png" width="24%" />
+
+</div>
 
 ## Roadmap
 
@@ -51,11 +58,10 @@ This is a list of all the features that are planned for Mixtapes:
   - [x] Playlist Shuffle button
   - [x] Playlist Order
   - [x] Playlist Cover Change
-    > Currently the playlist cover can be changed via API, but, changing it in the app isn't fully working.
   - [_] Playlist Change Visibility
     > Currently the playlist visibility cannot be changed.
-  - [X] Playlist Change Description
-  - [X] Playlist Change Name
+  - [x] Playlist Change Description
+  - [x] Playlist Change Name
 - [x] **Album Page**: View and play albums.
   - [x] Basic album info.
   - [x] Album tracks.
@@ -86,6 +92,7 @@ This is a list of all the features that are planned for Mixtapes:
 - [-] **Flatpak**: Package Mixtapes as a Flatpak.
   - [x] Flatpak build
   - [-] Flathub release
+    > Depends on App icon.
   - [_] App icon
 - [_] **GNOME Circle**: Maybe get Mixtapes on GNOME Circle?
   > Still considering it, might not happen.

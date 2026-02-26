@@ -172,7 +172,8 @@ class MainWindow(Adw.ApplicationWindow):
         # View Switcher Bar (Mobile) - Stacked above Player Bar?
         self.view_switcher_bar = Adw.ViewSwitcherBar()
         self.view_switcher_bar.set_stack(self.view_stack)
-        self.view_switcher_bar.set_reveal(False)  # Default hidden
+        self.view_switcher_bar.set_reveal(False)
+        self.view_switcher_bar.set_visible(False)
         self.root_content_view.add_bottom_bar(self.view_switcher_bar)
 
         from ui.expanded_player import ExpandedPlayer
@@ -213,6 +214,7 @@ class MainWindow(Adw.ApplicationWindow):
             )
         )
         breakpoint.add_setter(self.view_switcher_bar, "reveal", True)
+        breakpoint.add_setter(self.view_switcher_bar, "visible", True)
         breakpoint.add_setter(self.split_view, "collapsed", True)
 
         # Compact Mode for Player Bar

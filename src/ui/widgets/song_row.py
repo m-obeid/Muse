@@ -91,21 +91,6 @@ class SongRowWidget(Gtk.Box):
                     if hasattr(root, "open_artist"):
                         root.open_artist(aid, name)
 
-        def set_as_cover_action(action, param):
-            vid = item.video_id
-            set_id = item.track_data.get(
-                "setVideoId"
-            ) or item.track_data.get("playlistId")
-            if hasattr(self.page, "playlist_id") and set_id:
-                # To change cover, we move the item to the top
-                import threading
-
-                thread = threading.Thread(
-                    target=self.page._move_to_top, args=(set_id, vid)
-                )
-                thread.daemon = True
-                thread.start()
-
         action_copy = Gio.SimpleAction.new("copy_link", None)
         action_copy.connect("activate", copy_link_action)
         group.add_action(action_copy)
@@ -114,10 +99,6 @@ class SongRowWidget(Gtk.Box):
         action_goto.connect("activate", goto_artist_action)
         group.add_action(action_goto)
 
-        action_set_cover = Gio.SimpleAction.new("set_cover", None)
-        action_set_cover.connect("activate", set_as_cover_action)
-        group.add_action(action_set_cover)
-
         menu_model = Gio.Menu()
         if item.video_id:
             menu_model.append("Copy Link", "row.copy_link")
@@ -125,18 +106,6 @@ class SongRowWidget(Gtk.Box):
         artists = item.track_data.get("artists", [])
         if artists and artists[0].get("id"):
             menu_model.append("Go to Artist", "row.goto_artist")
-
-        # Only allow setting cover if it's a playlist (not album) and we have auth
-        if (
-            self.client.is_authenticated()
-            and hasattr(self.page, "playlist_id")
-            and self.page.playlist_id
-            and not (
-                self.page.playlist_id.startswith("MPRE")
-                or self.page.playlist_id.startswith("OLAK")
-            )
-        ):
-            menu_model.append("Set as Playlist Cover", "row.set_cover")
 
         if menu_model.get_n_items() > 0:
             popover = Gtk.PopoverMenu.new_from_model(menu_model)

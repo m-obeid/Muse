@@ -148,6 +148,20 @@ class AsyncImage(Gtk.Image):
 
         self.set_from_pixbuf(pixbuf)
 
+    def set_from_file(self, file):
+        """Optimistically set image from a local file object (GFile)"""
+        try:
+            # We must load into a pixbuf first to handle scaling correctly
+            path = file.get_path()
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+                path, self.target_w, self.target_h, True
+            )
+            self.set_from_pixbuf(pixbuf)
+            # Nullify URL so subsequent async loads don't overwrite this immediately
+            self.url = f"file://{path}"
+        except Exception as e:
+            print(f"Error setting from file: {e}")
+
 
 def subprocess_pixbuf(pixbuf, x, y, w, h):
     # bindings helper

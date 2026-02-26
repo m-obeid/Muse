@@ -167,7 +167,6 @@ class Player(GObject.Object):
         else:
             self.current_queue_index = start_index
 
-        print(f"Queue set with {len(tracks)} tracks. Shuffle={shuffle}.")
         if self.current_queue_index >= 0 and self.current_queue_index < len(self.queue):
             self._play_current_index()
         else:
@@ -229,10 +228,6 @@ class Player(GObject.Object):
             elif insert_index <= self.current_queue_index < old_index:
                 self.current_queue_index += 1
 
-            print(
-                f"DEBUG: Moved item from {old_index} to {insert_index} (target {new_index}). New Queue Order (titles): {[t.get('title') for t in self.queue[:5]]}..."
-            )
-
             # Notify UI
             self.emit("state-changed", "queue-updated")
             return True
@@ -253,26 +248,16 @@ class Player(GObject.Object):
             self._play_current_index()
 
             # Check for infinite auto-append on manual skip
-            print(
-                f"\033[93m[DEBUG-INFINITE] play_queue_index({index}). queue_is_infinite={self.queue_is_infinite}, queue_source_id='{self.queue_source_id}', _is_fetching={self._is_fetching_infinite}, queue_len={len(self.queue)}, target_video={self.queue[index].get('videoId')} target_title={self.queue[index].get('title')}\033[0m"
-            )
             if self.queue_is_infinite and self.queue_source_id and self.client:
                 if (
                     not self._is_fetching_infinite
                     and self.current_queue_index >= len(self.queue) // 2
                 ):
-                    print(
-                        f"\033[92m[DEBUG-INFINITE] Conditions met! Triggering _start_infinite_fetch() from play_queue_index\033[0m"
-                    )
                     self._start_infinite_fetch()
                 else:
                     print(
                         f"\033[91m[DEBUG-INFINITE] Conditions NOT met (is_fetching={self._is_fetching_infinite}, index={self.current_queue_index}, halfway={len(self.queue) // 2})\033[0m"
                     )
-            else:
-                print(
-                    f"\033[91m[DEBUG-INFINITE] queue_is_infinite check failed (infinite={self.queue_is_infinite}, source={self.queue_source_id}, client={self.client != None})\033[0m"
-                )
 
             self.emit("state-changed", "queue-updated")
 
@@ -282,26 +267,16 @@ class Player(GObject.Object):
             self._play_current_index()
 
             # Check for infinite auto-append
-            print(
-                f"\033[93m[DEBUG-INFINITE] next(). queue_is_infinite={self.queue_is_infinite}, queue_source_id='{self.queue_source_id}', _is_fetching={self._is_fetching_infinite}, queue_len={len(self.queue)}\033[0m"
-            )
             if self.queue_is_infinite and self.queue_source_id and self.client:
                 if (
                     not self._is_fetching_infinite
                     and self.current_queue_index >= len(self.queue) // 2
                 ):
-                    print(
-                        f"\033[92m[DEBUG-INFINITE] Conditions met! Triggering _start_infinite_fetch() from next()\033[0m"
-                    )
                     self._start_infinite_fetch()
                 else:
                     print(
                         f"\033[91m[DEBUG-INFINITE] Conditions NOT met (is_fetching={self._is_fetching_infinite}, index={self.current_queue_index}, halfway={len(self.queue) // 2})\033[0m"
                     )
-            else:
-                print(
-                    f"\033[91m[DEBUG-INFINITE] queue_is_infinite check failed (infinite={self.queue_is_infinite}, source={self.queue_source_id}, client={self.client != None})\033[0m"
-                )
         else:
             if self.repeat_mode == "all" and self.queue:
                 self.current_queue_index = 0
@@ -410,9 +385,6 @@ class Player(GObject.Object):
             if isinstance(artist, list):
                 artist = ", ".join([a.get("name", "") for a in artist])
 
-            print(
-                f"\033[96m[DEBUG-PLAYER] _play_current_index({self.current_queue_index}). video_id={video_id} title='{title}'\033[0m"
-            )
             self._load_internal(video_id, title, artist, thumb, like_status)
 
     def _load_internal(
@@ -498,17 +470,11 @@ class Player(GObject.Object):
         else:
             self.queue.extend(tracks)
 
-        print(
-            f"DEBUG: Extended queue with {len(tracks)} tracks. Total: {len(self.queue)}"
-        )
         self.emit("state-changed", "queue-updated")
 
     def _start_infinite_fetch(self):
         self._is_fetching_infinite = True
         limit = 50
-        print(
-            f"Queue halfway point reached. Fetching more for infinite playlist {self.queue_source_id}..."
-        )
 
         last_video_id = None
         if self.queue:

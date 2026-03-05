@@ -8,7 +8,7 @@ on:
 
 jobs:
   flatpak:
-    name: Build Flatpak
+    name: Build Flatpak (${{ matrix.arch }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -30,7 +30,14 @@ jobs:
       - name: Build using Flatpak Builder
         run: |
           sudo flatpak install -y flathub org.freedesktop.Sdk.Extension.node24//24.08
-          FLATPAK_ENABLE_SDK_EXT=node24 xvfb-run --auto-servernum flatpak-builder --user --repo=repo --disable-rofiles-fuse --install-deps-from=flathub --force-clean --default-branch=master --arch=${{ matrix.arch }} flatpak_app com.pocoguy.Muse.yaml
+          sudo FLATPAK_ENABLE_SDK_EXT=node24 xvfb-run --auto-servernum flatpak-builder \
+            --repo=repo \
+            --disable-rofiles-fuse \
+            --install-deps-from=flathub \
+            --force-clean \
+            --default-branch=master \
+            --arch=${{ matrix.arch }} \
+            flatpak_app com.pocoguy.Muse.yaml
           flatpak build-bundle repo Mixtapes-${{ matrix.arch }}.flatpak com.pocoguy.Muse master
 
       - name: Upload artifact
@@ -56,7 +63,7 @@ jobs:
           path: downloaded-flatpaks/
           merge-multiple: true
 
-      - name: Install flatpak ostree
+      - name: Install flatpak and ostree
         run: |
           sudo apt-get update
           sudo apt-get install -y flatpak ostree
@@ -66,7 +73,7 @@ jobs:
           mkdir -p repo
           ostree init --mode=archive-z2 --repo=repo
           for f in downloaded-flatpaks/*.flatpak; do
-              flatpak build-import-bundle repo "$f"
+            flatpak build-import-bundle repo "$f"
           done
           flatpak build-update-repo --generate-static-deltas repo
 

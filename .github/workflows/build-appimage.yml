@@ -27,7 +27,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y python3-pip python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 libglib2.0-dev-bin libcairo2-dev python3-dev libfuse2 libgirepository1.0-dev libxml2-utils wget file binutils patch qemu-user-static
+          sudo apt-get install -y python3-pip python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 libglib2.0-dev-bin libcairo2-dev python3-dev libfuse2 libgirepository1.0-dev libxml2-utils wget file binutils patch qemu-user-static gcc-aarch64-linux-gnu
 
       - name: Install appimage-builder
         run: |
@@ -63,16 +63,60 @@ jobs:
           # yt-dlp is pure python, but we ensures it's in the target
           pip3 install "yt-dlp[default]" --target="$SITE_PACKAGES" --no-cache-dir --break-system-packages
 
-          # Create launcher
-          cat > AppDir/usr/bin/muse << EOF
-          #!/bin/bash
-          # Include all possible bundled python paths
-          # We include both 3.12 and 3.13 to be safe across build host and bundle versions
-          export PYTHONPATH="\$APPDIR/usr/share/muse:\$APPDIR/usr/lib/python3.12/site-packages:\$APPDIR/usr/lib/python3.13/site-packages:\$APPDIR/usr/lib/python3/dist-packages"
-          export PYTHONHOME="\$APPDIR/usr"
-          cd "\$APPDIR/usr/share/muse"
-          exec python3 src/main.py "\$@"
+          # Create C loader to satisfy appimage-builder ELF requirement
+          cat > muse_loader.c << EOF
+          #include <stdio.h>
+          #include <stdlib.h>
+          #include <unistd.h>
+          #include <string.h>
+
+          int main(int argc, char *argv[]) {
+              char *appdir = getenv("APPDIR");
+              if (!appdir) {
+                  fprintf(stderr, "Error: APPDIR not set\n");
+                  return 1;
+              }
+
+              // Set PYTHONPATH for both 3.12 and 3.13
+              char pythonpath[4096];
+              snprintf(pythonpath, sizeof(pythonpath), 
+                       "%s/usr/share/muse:%s/usr/lib/python3.12/site-packages:%s/usr/lib/python3.13/site-packages:%s/usr/lib/python3/dist-packages",
+                       appdir, appdir, appdir, appdir);
+              setenv("PYTHONPATH", pythonpath, 1);
+
+              // Set PYTHONHOME
+              char pythonhome[1024];
+              snprintf(pythonhome, sizeof(pythonhome), "%s/usr", appdir);
+              setenv("PYTHONHOME", pythonhome, 1);
+
+              // Work in the share/muse directory
+              char workdir[1024];
+              snprintf(workdir, sizeof(workdir), "%s/usr/share/muse", appdir);
+              if (chdir(workdir) != 0) {
+                  perror("chdir");
+                  return 1;
+              }
+
+              // Exec python3 src/main.py
+              char **new_argv = malloc((argc + 2) * sizeof(char *));
+              new_argv[0] = "python3";
+              new_argv[1] = "src/main.py";
+              for (int i = 1; i < argc; i++) {
+                  new_argv[i+1] = argv[i];
+              }
+              new_argv[argc + 1] = NULL;
+
+              execvp("python3", new_argv);
+              perror("execvp");
+              return 1;
+          }
           EOF
+
+          if [ "${{ matrix.arch }}" = "aarch64" ]; then
+            aarch64-linux-gnu-gcc muse_loader.c -o AppDir/usr/bin/muse
+          else
+            gcc muse_loader.c -o AppDir/usr/bin/muse
+          fi
           chmod +x AppDir/usr/bin/muse
 
       - name: Adapt Architecture for aarch64

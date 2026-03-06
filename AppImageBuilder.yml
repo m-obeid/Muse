@@ -41,7 +41,7 @@ AppDir:
       # But we can provide a sensible default here for development/debugging
       # On Arch, it's typically python3.13 or similar
       PYTHONHOME: "${APPDIR}/usr"
-      PYTHONPATH: "${APPDIR}/usr/share/muse:${APPDIR}/usr/lib/python3.13/site-packages:${APPDIR}/usr/lib/python3/dist-packages"
+      PYTHONPATH: "${APPDIR}/usr/share/muse:${APPDIR}/usr/lib/python3.12/site-packages:${APPDIR}/usr/lib/python3.13/site-packages:${APPDIR}/usr/lib/python3/dist-packages"
 
 AppImage:
   arch: x86_64

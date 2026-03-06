@@ -59,25 +59,20 @@ jobs:
           # Exclude PyGObject and mprisify from bulk install to avoid compilation
           grep -vE "PyGObject|mprisify" requirements.txt > requirements-pure.txt
           pip3 install -r requirements-pure.txt --target="$SITE_PACKAGES" --no-cache-dir --break-system-packages
-          pip3 install pydbus --target="$SITE_PACKAGES" --no-cache-dir --break-system-packages --no-deps
 
-          if [ "${{ matrix.arch }}" = "aarch64" ]; then
-            pip3 install --platform=linux/aarch64 --only-binary=:all: PyGObject --target="$SITE_PACKAGES" --no-cache-dir --break-system-packages
-            pip3 install --platform=linux/aarch64 --only-binary=:all: mprisify --target="$SITE_PACKAGES" --no-cache-dir --break-system-packages
-            pip3 install --platform=linux/aarch64 --only-binary=:all: "yt-dlp[default]" --target="$SITE_PACKAGES" --no-cache-dir --break-system-packages
-          else
-            pip3 install --platform=linux/x86_64 --only-binary=:all: PyGObject --target="$SITE_PACKAGES" --no-cache-dir --break-system-packages
-            pip3 install --platform=linux/x86_64 --only-binary=:all: mprisify --target="$SITE_PACKAGES" --no-cache-dir --break-system-packages
-            pip3 install --platform=linux/x86_64 --only-binary=:all: "yt-dlp[default]" --target="$SITE_PACKAGES" --no-cache-dir --break-system-packages
-          fi
+          # Install mprisify and its dependencies with --no-deps to avoid PyGObject source build
+          pip3 install pydbus --target="$SITE_PACKAGES" --no-cache-dir --break-system-packages --no-deps
+          pip3 install "mprisify @ git+https://gitlab.com/zehkira/mprisify.git@v1.0.0" --target="$SITE_PACKAGES" --no-cache-dir --break-system-packages --no-deps
+
+          # yt-dlp is pure python, but we ensures it's in the target
+          pip3 install "yt-dlp[default]" --target="$SITE_PACKAGES" --no-cache-dir --break-system-packages
 
           # Create launcher
           cat > AppDir/usr/bin/muse << EOF
           #!/bin/bash
           # Include all possible bundled python paths
-          # Dynamic python version discovery
-          PYTHON_VERSION=\$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
-          export PYTHONPATH="\$APPDIR/usr/share/muse:\$APPDIR/usr/lib/python\$PYTHON_VERSION/site-packages:\$APPDIR/usr/lib/python3/dist-packages"
+          # We include both 3.12 and 3.13 to be safe across build host and bundle versions
+          export PYTHONPATH="\$APPDIR/usr/share/muse:\$APPDIR/usr/lib/python3.12/site-packages:\$APPDIR/usr/lib/python3.13/site-packages:\$APPDIR/usr/lib/python3/dist-packages"
           export PYTHONHOME="\$APPDIR/usr"
           cd "\$APPDIR/usr/share/muse"
           exec python3 src/main.py "\$@"

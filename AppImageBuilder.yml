@@ -29,10 +29,6 @@ AppDir:
     exclude:
       - libgcc-s1
       - libstdc++6
-      - libselinux1
-      - libmount1
-      - libblkid1
-      - libuuid1
 
   runtime:
     env:

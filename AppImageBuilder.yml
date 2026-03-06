@@ -9,7 +9,7 @@ AppDir:
     icon: com.pocoguy.Muse
     version: latest
     exec: usr/bin/python3
-    exec_args: "${APPDIR}/usr/share/muse/src/main.py $@"
+    exec_args: "usr/share/muse/src/main.py $@"
 
   apt:
     arch: [amd64]
@@ -37,7 +37,7 @@ AppDir:
     env:
       PATH: "${APPDIR}/usr/bin:${PATH}"
       PYTHONHOME: "${APPDIR}/usr"
-      PYTHONPATH: "${APPDIR}/usr/share/muse:${APPDIR}/usr/lib/python3.12/site-packages"
+      PYTHONPATH: "${APPDIR}/usr/share/muse:${APPDIR}/usr/lib/python3.12/site-packages:${APPDIR}/usr/local/lib/python3.12/dist-packages:${APPDIR}/usr/lib/python3/dist-packages"
 
 AppImage:
   arch: x86_64

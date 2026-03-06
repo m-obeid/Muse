@@ -92,6 +92,13 @@ jobs:
               snprintf(pythonhome, sizeof(pythonhome), "%s/usr", appdir);
               setenv("PYTHONHOME", pythonhome, 1);
 
+              // Set SSL_CERT_FILE and SSL_CERT_DIR
+              char cert_file[1024], cert_dir[1024];
+              snprintf(cert_file, sizeof(cert_file), "%s/etc/ssl/certs/ca-certificates.crt", appdir);
+              snprintf(cert_dir, sizeof(cert_dir), "%s/etc/ssl/certs", appdir);
+              setenv("SSL_CERT_FILE", cert_file, 1);
+              setenv("SSL_CERT_DIR", cert_dir, 1);
+
               // Work in the share/muse directory
               char workdir[1024];
               snprintf(workdir, sizeof(workdir), "%s/usr/share/muse", appdir);

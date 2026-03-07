@@ -3,8 +3,8 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 import threading
-from gi.repository import Gtk, Adw, GLib, Gdk, Gio
-from ui.utils import AsyncImage, LikeButton
+from gi.repository import Gtk, Adw, GLib, Gdk, Gio, Pango
+from ui.utils import AsyncPicture, LikeButton
 
 
 class SongRowWidget(Gtk.Box):
@@ -18,12 +18,14 @@ class SongRowWidget(Gtk.Box):
         self._start_x = 0
         self._start_y = 0
 
-        self.row = Adw.ActionRow()
+        self.row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
         self.row.set_hexpand(True)
+        self.row.add_css_class("song-row")
         self.append(self.row)
 
         # Image with playing indicator overlay
-        self.img = AsyncImage(size=40)
+        self.img = AsyncPicture(crop_to_square=True, target_size=44)
+        self.img.add_css_class("song-img")
 
         self.img_overlay = Gtk.Overlay()
         self.img_overlay.set_child(self.img)
@@ -63,24 +65,50 @@ class SongRowWidget(Gtk.Box):
         self._anim_state = False
 
         self.img_overlay.add_overlay(self.playing_indicator)
-        self.row.add_prefix(self.track_num_label)
-        self.row.add_prefix(self.img_overlay)
+        self.row.append(self.track_num_label)
+        self.row.append(self.img_overlay)
 
-        # Suffixes: Duration, Like
+        # Main Title / Subtitle Box
+        self.vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        self.vbox.set_valign(Gtk.Align.CENTER)
+        self.vbox.set_hexpand(True)
+
+        self.title_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        self.title_label = Gtk.Label()
+        self.title_label.set_halign(Gtk.Align.START)
+        self.title_label.set_ellipsize(Pango.EllipsizeMode.END)
+        self.title_label.set_lines(1)
+
         self.explicit_badge = Gtk.Label(label="E")
         self.explicit_badge.add_css_class("explicit-badge")
         self.explicit_badge.set_valign(Gtk.Align.CENTER)
         self.explicit_badge.set_visible(False)
-        self.row.add_suffix(self.explicit_badge)
+
+        self.title_box.append(self.title_label)
+        self.title_box.append(self.explicit_badge)
+
+        self.subtitle_label = Gtk.Label()
+        self.subtitle_label.set_halign(Gtk.Align.START)
+        self.subtitle_label.set_ellipsize(Pango.EllipsizeMode.END)
+        self.subtitle_label.set_lines(1)
+        self.subtitle_label.add_css_class("dim-label")
+        self.subtitle_label.add_css_class("caption")
+
+        self.vbox.append(self.title_box)
+        self.vbox.append(self.subtitle_label)
+        self.row.append(self.vbox)
+
+        # Suffixes: Duration, Like
 
         self.dur_lbl = Gtk.Label()
         self.dur_lbl.add_css_class("caption")
         self.dur_lbl.set_valign(Gtk.Align.CENTER)
         self.dur_lbl.set_margin_end(6)
-        self.row.add_suffix(self.dur_lbl)
+        self.row.append(self.dur_lbl)
 
         self.like_btn = LikeButton(self.client, None)
-        self.row.add_suffix(self.like_btn)
+        self.like_btn.set_valign(Gtk.Align.CENTER)
+        self.row.append(self.like_btn)
 
         # Gesture for Right Click (Context Menu)
         gesture = Gtk.GestureClick()
@@ -112,10 +140,10 @@ class SongRowWidget(Gtk.Box):
         self.model_item = item
         self.page = page
 
-        self.row.set_title(GLib.markup_escape_text(item.title))
-        self.row.set_subtitle(GLib.markup_escape_text(item.artist))
-        self.row.set_title_lines(1)
-        self.row.set_subtitle_lines(1)
+        self.title_label.set_label(item.title)
+        self.title_label.set_tooltip_text(item.title)
+        self.subtitle_label.set_label(item.artist)
+        self.subtitle_label.set_tooltip_text(item.artist)
 
         self.dur_lbl.set_label(item.duration)
         self.explicit_badge.set_visible(item.is_explicit)
@@ -139,10 +167,10 @@ class SongRowWidget(Gtk.Box):
 
         if not item.video_id:
             self.row.set_sensitive(False)
-            self.row.set_activatable(False)
         else:
             self.row.set_sensitive(True)
-            self.row.set_activatable(True)
+
+        # CSS handles responsiveness and size limits natively now
 
         # Set initial playing state based on current player state
         self._apply_playing_state(

@@ -1,7 +1,7 @@
 from gi.repository import Gtk, Adw, GObject, GLib, Pango, Gio, Gdk
 import threading
 from api.client import MusicClient
-from ui.utils import AsyncImage, LikeButton, parse_item_metadata
+from ui.utils import AsyncPicture, LikeButton, parse_item_metadata
 
 
 class SearchPage(Adw.Bin):
@@ -213,9 +213,10 @@ class SearchPage(Adw.Bin):
         list_box.connect("row-activated", self.on_row_activated)
 
         for item in items:
-            row = Adw.ActionRow()
-            row.set_title(GLib.markup_escape_text(item.get("title", "Unknown")))
-            row.set_title_lines(1)
+            row = Gtk.ListBoxRow()
+            box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+            box.add_css_class("song-row")
+            row.set_child(box)
 
             # Subtitle
             subtitle = ""
@@ -249,19 +250,35 @@ class SearchPage(Adw.Bin):
                 else:
                     subtitle = count
 
-            if subtitle:
-                row.set_subtitle(GLib.markup_escape_text(subtitle))
-                row.set_subtitle_lines(1)
-
             # Cover Art
             thumbnails = item.get("thumbnails", [])
             thumb_url = thumbnails[-1]["url"] if thumbnails else None
 
-            img = AsyncImage(url=thumb_url, size=40)
+            img = AsyncPicture(url=thumb_url, target_size=44, crop_to_square=True)
+            img.add_css_class("song-img")
             if not thumb_url:
                 img.set_from_icon_name("media-optical-symbolic")
 
-            row.add_prefix(img)
+            box.append(img)
+
+            vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            vbox.set_valign(Gtk.Align.CENTER)
+            vbox.set_hexpand(True)
+
+            title_label = Gtk.Label(label=item.get("title", "Unknown"))
+            title_label.set_halign(Gtk.Align.START)
+            title_label.set_ellipsize(Pango.EllipsizeMode.END)
+            title_label.set_lines(1)
+
+            subtitle_label = Gtk.Label(label=subtitle or "")
+            subtitle_label.set_halign(Gtk.Align.START)
+            subtitle_label.set_ellipsize(Pango.EllipsizeMode.END)
+            subtitle_label.set_lines(1)
+            subtitle_label.add_css_class("dim-label")
+            subtitle_label.add_css_class("caption")
+
+            title_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+            title_box.append(title_label)
 
             # Explicit Badge
             meta = parse_item_metadata(item)
@@ -269,14 +286,19 @@ class SearchPage(Adw.Bin):
                 explicit_badge = Gtk.Label(label="E")
                 explicit_badge.add_css_class("explicit-badge")
                 explicit_badge.set_valign(Gtk.Align.CENTER)
-                row.add_suffix(explicit_badge)
+                title_box.append(explicit_badge)
+
+            vbox.append(title_box)
+            vbox.append(subtitle_label)
+            box.append(vbox)
 
             # Like Button
             if item.get("videoId"):
                 like_btn = LikeButton(
                     self.client, item["videoId"], item.get("likeStatus", "INDIFFERENT")
                 )
-                row.add_suffix(like_btn)
+                like_btn.set_valign(Gtk.Align.CENTER)
+                box.append(like_btn)
 
             row.item_data = item
             row.set_activatable(True)

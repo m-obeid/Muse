@@ -24,7 +24,7 @@ def cache_pixbuf(url, pixbuf):
     if w > max_dim or h > max_dim:
         scale = max_dim / max(w, h)
         pixbuf = pixbuf.scale_simple(
-            int(w * scale), int(h * scale), GdkPixbuf.InterpType.BILINEAR
+            int(w * scale), int(h * scale), GdkPixbuf.InterpType.HYPER
         )
 
     IMG_CACHE[url] = pixbuf
@@ -37,11 +37,23 @@ def get_high_res_url(url):
     if not url:
         return url
     if "googleusercontent.com" in url or "ggpht.com" in url:
-        # replace w120-h120 with w800-h800
-        url = re.sub(r"=w\d+-h\d+", "=w800-h800", url)
-        # replace s120 with s800 (but avoid replacing video sizes if any)
-        url = re.sub(r"=s\d+(?!x)", "=s800", url)
+        # If it has w/h, only update those and ignore s
+        if re.search(r"([=-])w\d+-h\d+", url):
+            return re.sub(r"([=-])w\d+-h\d+", r"\1w800-h800", url)
+        # Otherwise update s, but only if it looks like a parameter (at end or followed by hyphen)
+        return re.sub(r"([=-])s\d+(?=-|$)", r"\1s800", url)
     return url
+
+
+def copy_to_clipboard(text):
+    """Copies the given text to the default system clipboard."""
+    if not text:
+        return
+    display = Gdk.Display.get_default()
+    if display:
+        clipboard = display.get_clipboard()
+        clipboard.set(text)
+        print(f"[DEBUG] Copied to clipboard: {text}")
 
 
 def get_yt_music_link(item_id, is_album=False):
@@ -193,10 +205,21 @@ class AsyncImage(Gtk.Image):
                 loader.close()
                 pixbuf = loader.get_pixbuf()
 
-            if pixbuf:
-                # Cache the original full-res (scaled to max 800) pixbuf
-                cache_pixbuf(url, pixbuf)
+                if pixbuf:
+                    # Cache the original full-res (scaled to max 1600) pixbuf
+                    # We increase max_dim here to 1600 for better header quality
+                    w = pixbuf.get_width()
+                    h = pixbuf.get_height()
+                    max_dim = 1600
+                    if w > max_dim or h > max_dim:
+                        scale = max_dim / max(w, h)
+                        pixbuf = pixbuf.scale_simple(
+                            int(w * scale), int(h * scale), GdkPixbuf.InterpType.HYPER
+                        )
 
+                    cache_pixbuf(url, pixbuf)
+
+            if pixbuf:
                 # Now perform the widget-specific scaling and cropping in the background thread
                 # To support HiDPI (e.g. 200% scale), we double the target pixel density
                 # GTK will scale the texture back down smoothly, keeping it crisp.
@@ -212,9 +235,7 @@ class AsyncImage(Gtk.Image):
                 new_h = int(h * scale)
 
                 # Scale properly
-                scaled = pixbuf.scale_simple(
-                    new_w, new_h, GdkPixbuf.InterpType.BILINEAR
-                )
+                scaled = pixbuf.scale_simple(new_w, new_h, GdkPixbuf.InterpType.HYPER)
 
                 # Center crop to target dimensions
                 final_pixbuf = scaled
@@ -247,10 +268,8 @@ class AsyncImage(Gtk.Image):
         if url and self.url != url:
             return
 
-        if self.circular:
-            self.add_css_class("circular")
-
-        self.set_from_pixbuf(pixbuf)
+        texture = Gdk.Texture.new_for_pixbuf(pixbuf)
+        self.set_from_paintable(texture)
 
     def set_from_file(self, file):
         """Optimistically set image from a local file object (GFile)"""
@@ -276,13 +295,35 @@ def subprocess_pixbuf(pixbuf, x, y, w, h):
 
 class AsyncPicture(Gtk.Picture):
     # Added crop_to_square parameter
-    def __init__(self, url=None, crop_to_square=False, **kwargs):
+    def __init__(
+        self, url=None, crop_to_square=False, icon_name=None, target_size=None, **kwargs
+    ):
         super().__init__(**kwargs)
         self.set_content_fit(Gtk.ContentFit.COVER)
         self.crop_to_square = crop_to_square
+        self.target_size = target_size
         self.url = url
-        if url:
+        if icon_name:
+            self.set_from_icon_name(icon_name)
+        elif url:
             self.load_url(url)
+
+    def set_from_icon_name(self, icon_name):
+        if not icon_name:
+            self.set_paintable(None)
+            return
+
+        display = Gdk.Display.get_default()
+        theme = Gtk.IconTheme.get_for_display(display)
+
+        # 256 is a good high-res baseline for icons to be scaled by GTK
+        icon_paintable = theme.lookup_icon(
+            icon_name, None, 256, 1, Gtk.TextDirection.NONE, Gtk.IconLookupFlags.PRELOAD
+        )
+        if icon_paintable:
+            self.set_paintable(icon_paintable)
+        else:
+            self.set_paintable(None)
 
     def load_url(self, url, **kwargs):
         url = get_high_res_url(url)
@@ -291,60 +332,73 @@ class AsyncPicture(Gtk.Picture):
             self.set_paintable(None)
             return
 
-        print(f"[IMAGE-LOAD] AsyncPicture url={url}")
-        cached_pixbuf = IMG_CACHE.get(url)
-        if cached_pixbuf:
-            IMG_CACHE.move_to_end(url)
+        # Check cache
+        if url in IMG_CACHE:
+            pixbuf = IMG_CACHE[url]
+            GLib.idle_add(self._apply_pixbuf, pixbuf, url)
+            return
 
-        thread = threading.Thread(
-            target=self._fetch_image, args=(url, kwargs.get("fallbacks"), cached_pixbuf)
-        )
-        thread.daemon = True
-        thread.start()
+        target_size = self.target_size
+        crop = self.crop_to_square
+        threading.Thread(
+            target=self._fetch_image, args=(url, target_size, crop), daemon=True
+        ).start()
 
-    def _fetch_image(self, url, fallbacks=None, cached_pixbuf=None):
+    def _fetch_image(self, url, target_size=None, crop=False):
         try:
-            pixbuf = cached_pixbuf
-            if not pixbuf:
-                with urllib.request.urlopen(url) as response:
-                    data = response.read()
+            # We use MusicClient's session if possible or just requests
+            import requests
 
+            # Reuse connection if possible
+            resp = requests.get(url, timeout=10)
+            if resp.status_code == 200:
                 loader = GdkPixbuf.PixbufLoader()
-                loader.write(data)
+                loader.write(resp.content)
                 loader.close()
                 pixbuf = loader.get_pixbuf()
 
-            if pixbuf:
-                # Force center-crop to a 1:1 square in the worker thread
-                if self.crop_to_square:
+                if pixbuf:
                     w = pixbuf.get_width()
                     h = pixbuf.get_height()
-                    if w != h:
-                        size = min(w, h)
-                        offset_x = (w - size) // 2
-                        offset_y = (h - size) // 2
-                        pixbuf = pixbuf.new_subpixbuf(offset_x, offset_y, size, size)
 
-                # Scale down if still too large
-                w = pixbuf.get_width()
-                h = pixbuf.get_height()
-                max_dim = 800
-                if w > max_dim or h > max_dim:
-                    scale = max_dim / max(w, h)
-                    pixbuf = pixbuf.scale_simple(
-                        int(w * scale), int(h * scale), GdkPixbuf.InterpType.BILINEAR
-                    )
+                    if crop:
+                        sz = min(w, h)
+                        pixbuf = pixbuf.new_subpixbuf(
+                            (w - sz) // 2, (h - sz) // 2, sz, sz
+                        )
+                        w = h = sz
 
-                cache_pixbuf(url, pixbuf)
+                    # Scale to max_dim=1600 for high-quality caching
+                    max_dim = 1600
+                    if w > max_dim or h > max_dim:
+                        scale = max_dim / max(w, h)
+                        pixbuf = pixbuf.scale_simple(
+                            int(w * scale),
+                            int(h * scale),
+                            GdkPixbuf.InterpType.HYPER,
+                        )
+                        w = pixbuf.get_width()
+                        h = pixbuf.get_height()
+
+                    # Cache the high-res version BEFORE potential thumbnail downscaling
+                    cache_pixbuf(url, pixbuf)
+
+                    if target_size:
+                        # Scale to 2x for HiDPI quality (this is the widget-specific version)
+                        tw = target_size * 2
+                        th = target_size * 2
+                        if w > tw or h > th:
+                            scale = max(tw / w, th / h)
+                            pixbuf = pixbuf.scale_simple(
+                                int(w * scale),
+                                int(h * scale),
+                                GdkPixbuf.InterpType.HYPER,
+                            )
+
                 GLib.idle_add(self._apply_pixbuf, pixbuf, url)
 
         except Exception as e:
             print(f"AsyncPicture error {url}: {e}")
-            if fallbacks and self.url == url:
-                next_url = fallbacks.pop(0)
-                self.url = next_url
-                print(f"Trying fallback: {next_url}")
-                self._fetch_image(next_url, fallbacks)
 
     def _apply_pixbuf(self, pixbuf, url=None):
         # Race condition check

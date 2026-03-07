@@ -253,6 +253,8 @@ class MainWindow(Adw.ApplicationWindow):
         return None
 
     def _on_mobile_breakpoint_apply(self, breakpoint):
+        self.add_css_class("compact")
+        self._is_compact = True
         page = self._get_active_playlist_page()
         if page:
             page.set_compact_mode(True)
@@ -262,6 +264,7 @@ class MainWindow(Adw.ApplicationWindow):
             self.title_bin.set_child(self.title_widget)
 
     def _on_mobile_breakpoint_unapply(self, breakpoint):
+        self.remove_css_class("compact")
         page = self._get_active_playlist_page()
         if page:
             page.set_compact_mode(False)
@@ -340,7 +343,7 @@ class MainWindow(Adw.ApplicationWindow):
         about = Adw.AboutDialog()
         about.set_application_name("Mixtapes")
         about.set_developer_name("POCOGuy")
-        about.set_version("alpha 202603020016")
+        about.set_version("alpha 202603071729")
         about.set_website("https://www.pocoguy.com/")
         about.set_copyright("© 2026 POCOGuy")
         about.set_license_type(Gtk.License.GPL_3_0)
@@ -360,19 +363,14 @@ class MainWindow(Adw.ApplicationWindow):
 
         import logger
 
-        debug_row = Adw.ActionRow()
+        debug_row = Adw.SwitchRow()
         debug_row.set_title("Enable Debug Logs")
         debug_row.set_subtitle("Print diagnostic information to the terminal")
-
-        debug_switch = Gtk.Switch()
-        debug_switch.set_valign(Gtk.Align.CENTER)
-        debug_switch.set_active(logger.get_debug_logs())
-        debug_switch.connect(
+        debug_row.set_active(logger.get_debug_logs())
+        debug_row.connect(
             "notify::active",
             lambda switch, param: logger.set_debug_logs(switch.get_active()),
         )
-
-        debug_row.add_suffix(debug_switch)
         app_group.add(debug_row)
 
         group = Adw.PreferencesGroup()

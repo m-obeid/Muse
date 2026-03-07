@@ -1,4 +1,4 @@
-from gi.repository import Gtk, Adw, GObject, GLib, Gdk, Gio
+from gi.repository import Gtk, Adw, GObject, GLib, Gdk, Gio, Pango
 import threading
 from api.client import MusicClient
 
@@ -196,27 +196,19 @@ class LibraryPage(Adw.Bin):
 
             if row:
                 # Update existing
+                box = row.get_child()
                 if row.playlist_title != title:
-                    row.set_title(GLib.markup_escape_text(title))
                     row.playlist_title = title
+                    box._title_label.set_label(title)
 
-                # Always update subtitle if it changed?
-                # or check against stored?
-                # simpler to just set it.
-                row.set_subtitle(GLib.markup_escape_text(subtitle))
+                box._subtitle_label.set_label(subtitle)
                 row.playlist_count = count  # store raw count
                 row.is_owned = self.client.is_own_playlist(p, playlist_id=p_id)
-
-                # Update Ownership Indicator - Removed temporary indicator
-                pass
 
                 # Image
                 if hasattr(row, "cover_img"):
                     if row.cover_img.url != thumb_url:
-                        try:
-                            row.cover_img.load_url(thumb_url)
-                        except Exception:
-                            pass
+                        row.cover_img.load_url(thumb_url)
 
                 # Reordering
                 current_idx = row.get_index()
@@ -226,29 +218,48 @@ class LibraryPage(Adw.Bin):
 
             else:
                 # Create New
-                row = Adw.ActionRow()
-                row.set_title(GLib.markup_escape_text(title))
-                row.set_property("title-lines", 1)
-                row.set_subtitle(GLib.markup_escape_text(subtitle))
-                row.set_property("subtitle-lines", 1)
+                row = Gtk.ListBoxRow()
+                box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+                box.add_css_class("song-row")
+                row.set_child(box)
 
-                from ui.utils import AsyncImage
+                from ui.utils import AsyncPicture
 
-                img = AsyncImage(url=thumb_url, size=40)
+                img = AsyncPicture(url=thumb_url, target_size=44, crop_to_square=True)
+                img.add_css_class("song-img")
                 if not thumb_url:
                     img.set_from_icon_name("media-playlist-audio-symbolic")
 
-                row.add_prefix(img)
+                box.append(img)
                 row.cover_img = img
+
+                vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+                vbox.set_valign(Gtk.Align.CENTER)
+                vbox.set_hexpand(True)
+
+                title_label = Gtk.Label(label=title)
+                title_label.set_halign(Gtk.Align.START)
+                title_label.set_ellipsize(Pango.EllipsizeMode.END)
+                title_label.set_lines(1)
+                box._title_label = title_label
+
+                subtitle_label = Gtk.Label(label=subtitle)
+                subtitle_label.set_halign(Gtk.Align.START)
+                subtitle_label.set_ellipsize(Pango.EllipsizeMode.END)
+                subtitle_label.set_lines(1)
+                subtitle_label.add_css_class("dim-label")
+                subtitle_label.add_css_class("caption")
+                box._subtitle_label = subtitle_label
+
+                vbox.append(title_label)
+                vbox.append(subtitle_label)
+                box.append(vbox)
 
                 row.playlist_id = p_id
                 row.playlist_title = title
                 row.playlist_count = count
                 row.is_owned = self.client.is_own_playlist(p, playlist_id=p_id)
                 row.set_activatable(True)
-
-                # Ownership Indicator - Removed temporary indicator
-                pass
 
                 # Context Menu
                 gesture = Gtk.GestureClick()
@@ -453,11 +464,12 @@ class LibraryPage(Adw.Bin):
 
             if row:
                 # Update existing
+                box = row.get_child()
                 if row.artist_name != name:
-                    row.set_title(GLib.markup_escape_text(name))
                     row.artist_name = name
+                    box._title_label.set_label(name)
 
-                row.set_subtitle(GLib.markup_escape_text(subscribers))
+                box._subtitle_label.set_label(subscribers)
 
                 # Image
                 if hasattr(row, "cover_img"):
@@ -472,20 +484,42 @@ class LibraryPage(Adw.Bin):
 
             else:
                 # Create New
-                row = Adw.ActionRow()
-                row.set_title(GLib.markup_escape_text(name))
-                row.set_property("title-lines", 1)
-                row.set_subtitle(GLib.markup_escape_text(subscribers))
-                row.set_property("subtitle-lines", 1)
+                row = Gtk.ListBoxRow()
+                box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+                box.add_css_class("song-row")
+                row.set_child(box)
 
-                from ui.utils import AsyncImage
+                from ui.utils import AsyncPicture
 
-                img = AsyncImage(url=thumb_url, size=40)
+                img = AsyncPicture(url=thumb_url, target_size=44, crop_to_square=True)
+                img.add_css_class("song-img")
                 if not thumb_url:
                     img.set_from_icon_name("avatar-default-symbolic")
 
-                row.add_prefix(img)
+                box.append(img)
                 row.cover_img = img
+
+                vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+                vbox.set_valign(Gtk.Align.CENTER)
+                vbox.set_hexpand(True)
+
+                title_label = Gtk.Label(label=name)
+                title_label.set_halign(Gtk.Align.START)
+                title_label.set_ellipsize(Pango.EllipsizeMode.END)
+                title_label.set_lines(1)
+                box._title_label = title_label
+
+                subtitle_label = Gtk.Label(label=subscribers)
+                subtitle_label.set_halign(Gtk.Align.START)
+                subtitle_label.set_ellipsize(Pango.EllipsizeMode.END)
+                subtitle_label.set_lines(1)
+                subtitle_label.add_css_class("dim-label")
+                subtitle_label.add_css_class("caption")
+                box._subtitle_label = subtitle_label
+
+                vbox.append(title_label)
+                vbox.append(subtitle_label)
+                box.append(vbox)
 
                 row.artist_id = a_id
                 row.artist_name = name

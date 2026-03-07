@@ -1,5 +1,4 @@
 import threading
-import re
 import os
 import tempfile
 from gi.repository import Gtk, Adw, GObject, GLib, Pango, Gdk, Gio, GdkPixbuf
@@ -291,15 +290,18 @@ class PlaylistPage(Adw.Bin):
 
     def _setup_list_item(self, factory, list_item):
         bin_widget = Adw.Bin()
+        bin_widget.add_css_class("list-item-bin")
         list_item.set_child(bin_widget)
 
-        row = Adw.ActionRow()
-        row.set_activatable(False)
-        row.set_title_lines(1)
-        row.set_subtitle_lines(1)
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        row.set_hexpand(True)
+        row.add_css_class("song-row")
 
-        img = AsyncImage(size=40)
-        row.add_prefix(img)
+        from ui.utils import AsyncPicture
+
+        img = AsyncPicture(crop_to_square=True, target_size=44)
+        img.add_css_class("song-img")
+        row.append(img)
         row._lv_img = img
         row._lv_player_handler = None
 
@@ -311,26 +313,53 @@ class PlaylistPage(Adw.Bin):
         track_num.set_halign(Gtk.Align.CENTER)
         track_num.set_size_request(40, 40)
         track_num.set_visible(False)
-        row.add_prefix(track_num)
+        row.append(track_num)
         row._lv_track_num = track_num
+
+        # Main Title / Subtitle Box
+        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        vbox.set_valign(Gtk.Align.CENTER)
+        vbox.set_hexpand(True)
+
+        title_label = Gtk.Label()
+        title_label.set_halign(Gtk.Align.START)
+        title_label.set_ellipsize(Pango.EllipsizeMode.END)
+        title_label.set_lines(1)
+        row._title_label = title_label
+
+        subtitle_label = Gtk.Label()
+        subtitle_label.set_halign(Gtk.Align.START)
+        subtitle_label.set_ellipsize(Pango.EllipsizeMode.END)
+        subtitle_label.set_lines(1)
+        subtitle_label.add_css_class("dim-label")
+        subtitle_label.add_css_class("caption")
+        row._subtitle_label = subtitle_label
+
+        title_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        title_box.append(title_label)
+        row._title_label = title_label
 
         explicit_badge = Gtk.Label(label="E")
         explicit_badge.add_css_class("explicit-badge")
         explicit_badge.set_valign(Gtk.Align.CENTER)
         explicit_badge.set_visible(False)
-        row.add_suffix(explicit_badge)
+        title_box.append(explicit_badge)
         row._lv_explicit_badge = explicit_badge
+
+        vbox.append(title_box)
+        vbox.append(subtitle_label)
+        row.append(vbox)
 
         dur_lbl = Gtk.Label()
         dur_lbl.add_css_class("caption")
         dur_lbl.set_valign(Gtk.Align.CENTER)
         dur_lbl.set_margin_end(6)
-        row.add_suffix(dur_lbl)
+        row.append(dur_lbl)
         row._lv_dur_lbl = dur_lbl
 
         like_box = Gtk.Box()
         like_box.set_valign(Gtk.Align.CENTER)
-        row.add_suffix(like_box)
+        row.append(like_box)
         row._lv_like_box = like_box
 
         gesture = Gtk.GestureClick()
@@ -341,9 +370,9 @@ class PlaylistPage(Adw.Bin):
         # Left Click Gesture instead of list_view activate
         left_click = Gtk.GestureClick()
         left_click.set_button(1)
-        left_click.connect("pressed", self._on_row_left_pressed, bin_widget)
+        left_click.connect("pressed", self._on_row_left_pressed, row)
         left_click.connect("released", self._on_row_left_click, list_item)
-        bin_widget.add_controller(left_click)
+        row.add_controller(left_click)
 
         row._lv_video_data = None
         row._lv_full_track = None
@@ -373,8 +402,8 @@ class PlaylistPage(Adw.Bin):
         artist_list = t.get("artists", [])
         artist = ", ".join(a.get("name", "") for a in artist_list)
 
-        row.set_title(GLib.markup_escape_text(title))
-        row.set_subtitle(GLib.markup_escape_text(artist))
+        row._title_label.set_label(title)
+        row._subtitle_label.set_label(artist)
 
         thumbnails = t.get("thumbnails", [])
         thumb_url = thumbnails[-1]["url"] if thumbnails else None
@@ -422,7 +451,7 @@ class PlaylistPage(Adw.Bin):
         has_id = bool(t.get("videoId"))
         list_item.set_activatable(has_id)
         list_item.set_selectable(has_id)
-        bin_widget.set_sensitive(has_id)
+        row.set_sensitive(has_id)
 
         row._lv_video_data = {
             "id": t.get("videoId"),
@@ -437,17 +466,19 @@ class PlaylistPage(Adw.Bin):
         video_id = t.get("videoId")
         is_playing = bool(video_id and video_id == self.player.current_video_id)
         if is_playing:
-            bin_widget.add_css_class("now-playing")
+            row.add_css_class("playing")
         else:
-            bin_widget.remove_css_class("now-playing")
+            row.remove_css_class("playing")
 
         # Connect to player metadata changes
-        def on_meta_changed(player, *args, _bw=bin_widget, _vid=video_id):
+        def on_meta_changed(player, *args, _row=row, _vid=video_id):
             if bool(_vid and _vid == player.current_video_id):
-                _bw.add_css_class("now-playing")
+                _row.add_css_class("playing")
             else:
-                _bw.remove_css_class("now-playing")
+                _row.remove_css_class("playing")
 
+        if getattr(row, "_lv_player_handler", None):
+            self.player.disconnect(row._lv_player_handler)
         row._lv_player_handler = self.player.connect(
             "metadata-changed", on_meta_changed
         )
@@ -463,7 +494,6 @@ class PlaylistPage(Adw.Bin):
             return
 
         row = bin_widget._lv_track_ui
-
         # Disconnect player signal
         if row._lv_player_handler is not None:
             try:
@@ -471,14 +501,15 @@ class PlaylistPage(Adw.Bin):
             except Exception:
                 pass
             row._lv_player_handler = None
-        bin_widget.remove_css_class("now-playing")
+        row.remove_css_class("playing")
 
-        row.set_title("")
-        row.set_subtitle("")
-        row._lv_img.set_from_icon_name("media-optical-symbolic")
+        row._title_label.set_label("")
+        row._subtitle_label.set_label("")
+        row._lv_img.set_paintable(None)
         row._lv_img.url = None
         row._lv_dur_lbl.set_label("")
         row._lv_dur_lbl.set_visible(False)
+        row.remove_css_class("playing")
         row._lv_explicit_badge.set_visible(False)
         _clear_box(row._lv_like_box)
         row._lv_video_data = None
@@ -487,15 +518,16 @@ class PlaylistPage(Adw.Bin):
     def _teardown_list_item(self, factory, list_item):
         list_item.set_child(None)
 
-    def _on_row_left_pressed(self, gesture, n_press, x, y, bin_widget):
-        bin_widget._start_x = x
-        bin_widget._start_y = y
+    def _on_row_left_pressed(self, gesture, n_press, x, y, row):
+        row._start_x = x
+        row._start_y = y
 
     def _on_row_left_click(self, gesture, n_press, x, y, list_item):
         bin_widget = list_item.get_child()
-        if hasattr(bin_widget, "_start_x"):
-            dx = abs(x - bin_widget._start_x)
-            dy = abs(y - bin_widget._start_y)
+        row = getattr(bin_widget, "_lv_track_ui", bin_widget)
+        if hasattr(row, "_start_x"):
+            dx = abs(x - row._start_x)
+            dy = abs(y - row._start_y)
             if dx > 10 or dy > 10:
                 return
 
@@ -744,7 +776,7 @@ class PlaylistPage(Adw.Bin):
                         for t in thumbnails:
                             if "url" in t:
                                 nt = t.copy()
-                                nt["url"] = re.sub(r"w\d+-h\d+", "w544-h544", t["url"])
+                                # Systematic upgrade handled by utils.py
                                 new_thumbs.append(nt)
                         if new_thumbs:
                             thumbnails = new_thumbs
@@ -791,7 +823,7 @@ class PlaylistPage(Adw.Bin):
                     if thumbnails:
                         for t in thumbnails:
                             if "url" in t:
-                                t["url"] = re.sub(r"w\d+-h\d+", "w544-h544", t["url"])
+                                pass  # Systematic upgrade handled by utils.py
                         for track in tracks:
                             if not track.get("thumbnails"):
                                 track["thumbnails"] = thumbnails
@@ -1446,8 +1478,44 @@ class PlaylistPage(Adw.Bin):
         self._show_edit_dialog()
 
     def on_cover_right_click(self, gesture, n_press, x, y):
-        if self.edit_btn.get_visible():
-            self._show_edit_dialog()
+        url = getattr(self.cover_img, "url", None)
+        can_edit = self.edit_btn.get_visible()
+
+        if not url and not can_edit:
+            return
+
+        menu = Gio.Menu()
+        if url:
+            menu.append("Copy Cover URL", "cover.copy_url")
+        if can_edit:
+            menu.append("Edit Playlist", "cover.edit_playlist")
+
+        from ui.utils import copy_to_clipboard
+
+        group = Gio.SimpleActionGroup()
+
+        # Copy URL action
+        if url:
+            action = Gio.SimpleAction.new("copy_url", None)
+            action.set_enabled(True)
+            action.connect("activate", lambda *_: copy_to_clipboard(url))
+            group.add_action(action)
+
+        # Edit playlist action
+        if can_edit:
+            action = Gio.SimpleAction.new("edit_playlist", None)
+            action.set_enabled(True)
+            action.connect("activate", lambda *_: self._show_edit_dialog())
+            group.add_action(action)
+
+        self.cover_wrapper.insert_action_group("cover", group)
+
+        popover = Gtk.PopoverMenu.new_from_model(menu)
+        popover.set_parent(self.cover_wrapper)
+        rect = Gdk.Rectangle()
+        rect.x, rect.y, rect.width, rect.height = x, y, 1, 1
+        popover.set_pointing_to(rect)
+        popover.popup()
 
     def _show_edit_dialog(self):
         dialog = Adw.Dialog()

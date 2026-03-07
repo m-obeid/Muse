@@ -1,9 +1,28 @@
+@define-color scrim_top mix(@window_bg_color, transparent, 0.4);
+@define-color scrim_mid mix(@window_bg_color, transparent, 0.8);
+@define-color row_hover alpha(@accent_color, 0.08);
+@define-color row_selected alpha(@accent_color, 0.12);
+@define-color playing_bg alpha(@accent_color, 0.1);
+@define-color playing_fg hsl(from @accent_color h 100% 80%);
+
 .rounded {
   border-radius: 12px;
 }
 
 .banner-top-rounded {
   border-radius: 12px 12px 0 0;
+}
+
+/* Reset default hover/selection for playlist view rows 
+   where we use our custom .song-row inside */
+listview.playlist-view > row,
+listview.playlist-view > row:hover,
+listview.playlist-view > row:selected {
+  background-color: transparent;
+  background: none;
+  border: none;
+  box-shadow: none;
+  outline: none;
 }
 
 .sort-dropdown > button:not(:hover):not(:active) {
@@ -36,63 +55,77 @@
   text-decoration: underline;
 }
 
-listview.playlist-view {
+/* List View Reset */
+listview.playlist-view,
+listview.playlist-view > row,
+.list-item-bin {
   background: transparent;
+  background-color: transparent;
+  box-shadow: none;
+  border: none;
+}
+
+/* Ensure the inner ListBoxRow also doesn't have a background */
+listview.playlist-view > row > listboxrow,
+listboxrow.song-row-wrapper {
+  background: transparent;
+  background-color: transparent;
+  border: none;
   box-shadow: none;
 }
 
-listview.playlist-view > row {
-  background-color: transparent;
-  padding: 0;
-  border-radius: 0;
-  min-height: 0;
-}
-
-/* ── STYLE ONLY THE SONG ROWS ── */
-listview.playlist-view > row:not(:first-child) {
-  background-color: @card_bg_color;
+/* Song Row Base Styling */
+box.song-row {
+  border-radius: 10px;
   transition: background-color 200ms ease;
+  min-height: 56px;
+  padding: 6px 8px; /* Reduced padding and height */
 }
 
-/* The FIRST song (Index 2, because Index 1 is the header) */
-listview.playlist-view > row:nth-child(2) {
-  border-top: 1px solid @card_shade_color;
-  border-radius: 12px 12px 0 0;
+/* Only apply custom hover in the main playlist/search list views */
+listview.playlist-view box.song-row:hover {
+  background-color: @row_hover;
 }
 
-/* The LAST song (must NOT be the header) */
-listview.playlist-view > row:not(:first-child):last-child {
-  border-bottom: 1px solid @card_shade_color;
-  border-radius: 0 0 12px 12px;
+/* Highlight for selected/active items (Transferred from ListBoxRow) */
+listview.playlist-view > row:selected box.song-row {
+  background-color: @row_selected;
 }
 
-/* Edge case: If the playlist only has exactly 1 song */
-listview.playlist-view > row:nth-child(2):last-child {
-  border-radius: 12px;
-  border-left: 1px solid @card_shade_color;
-  border-right: 1px solid @card_shade_color;
+/* Playing indicator */
+box.song-row.playing {
+  color: @playing_fg;
+  background-color: @playing_bg;
 }
 
-/* Inner dividers between songs */
-listview.playlist-view > row:not(:first-child):not(:last-child) {
-  box-shadow: inset 0 -1px 0 @card_shade_color;
+box.song-row.playing label {
+  color: @playing_fg;
 }
 
-/* Hover & Active states strictly for songs */
-listview.playlist-view > row:not(:first-child):hover {
-  background-color: alpha(@card_fg_color, 0.12);
+/* Image scaling */
+picture.song-img {
+  min-width: 44px; /* Slightly smaller for 56px row */
+  min-height: 44px;
+  border-radius: 6px;
 }
 
-listview.playlist-view > row:not(:first-child):not(:disabled):active {
-  background-color: alpha(@card_fg_color, 0.18);
+/* Compact mode */
+.compact box.song-row {
+  min-height: 44px;
+  padding: 4px 8px;
 }
 
-listview.playlist-view > row:not(:first-child):not(:disabled):active {
-  background-color: alpha(@card_fg_color, 0.18);
+.compact picture.song-img {
+  min-width: 32px;
+  min-height: 32px;
 }
 
-listview.playlist-view > row:not(:first-child):disabled {
-  opacity: 0.5;
+.compact box.song-row label {
+  font-size: 0.95em; /* Larger compact font */
+}
+
+listview.playlist-view > row:disabled {
+  opacity: 1;
 }
 
 /* Horizontal Grid Item Hover */
@@ -103,45 +136,47 @@ listview.playlist-view > row:not(:first-child):disabled {
 }
 
 .artist-horizontal-item:hover {
-  background-color: alpha(@card_fg_color, 0.08);
+  background-color: @row_hover;
 }
 
 .artist-horizontal-item:active {
-  background-color: alpha(@card_fg_color, 0.15);
+  background-color: alpha(currentColor, 0.15);
 }
 
 .explicit-badge {
-  background-color: alpha(@card_fg_color, 0.1);
-  color: @card_fg_color;
-  border-radius: 4px;
-  min-width: 14px;
-  min-height: 14px;
+  background-color: alpha(currentColor, 0.15);
+  color: inherit;
+  border-radius: 2px;
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  min-height: 16px;
   padding: 0;
-  font-weight: bold;
-  font-size: 0.65em;
-  opacity: 0.6;
+  font-weight: 800;
+  font-size: 10px;
+  opacity: 0.8;
+  /* Center the E vertically and horizontally */
+  text-align: center;
+  line-height: 16px;
 }
 
-.dim-label {
-  box-shadow: none;
-  text-shadow: none;
-}
-
-.playlist-sort-row {
-  box-shadow: none;
-}
-
-/* ── NOW PLAYING INDICATOR ── */
-listview.playlist-view > row .now-playing {
-  background-color: alpha(@accent_color, 0.18);
-}
-/* First song row is nth-child(2) because first-child is the header */
-listview.playlist-view > row:nth-child(2) .now-playing {
-  border-radius: 12px 12px 0 0;
-}
-listview.playlist-view > row:last-child .now-playing {
-  border-radius: 0 0 12px 12px;
-}
-listview.playlist-view > row:nth-child(2):last-child .now-playing {
+.playlist-cover {
+  min-width: 200px;
+  min-height: 200px;
   border-radius: 12px;
 }
+
+.compact .playlist-cover {
+  min-width: 180px;
+  min-height: 180px;
+  border-radius: 12px;
+}
+
+.compact .header-container {
+  margin: 0;
+}
+
+.compact .header-info-box {
+  margin-bottom: 24px;
+}
+

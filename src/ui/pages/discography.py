@@ -216,19 +216,19 @@ class DiscographyPage(Adw.Bin):
             subtitle_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
             subtitle_box.set_halign(Gtk.Align.START)
 
-            if meta["is_explicit"]:
-                explicit_lbl = Gtk.Label(label="E")
-                explicit_lbl.set_justify(Gtk.Justification.CENTER)
-                explicit_lbl.set_halign(Gtk.Align.CENTER)
-                explicit_lbl.add_css_class("explicit-badge")
-                subtitle_box.append(explicit_lbl)
-
             if subtitle_text:
                 subtitle_lbl = Gtk.Label(label=subtitle_text)
                 subtitle_lbl.add_css_class("caption")
                 subtitle_lbl.add_css_class("dim-label")
                 subtitle_lbl.set_ellipsize(Pango.EllipsizeMode.END)
                 subtitle_box.append(subtitle_lbl)
+
+            if meta["is_explicit"]:
+                explicit_lbl = Gtk.Label(label="E")
+                explicit_lbl.set_justify(Gtk.Justification.CENTER)
+                explicit_lbl.set_halign(Gtk.Align.CENTER)
+                explicit_lbl.add_css_class("explicit-badge")
+                subtitle_box.append(explicit_lbl)
 
             if subtitle_text or meta["is_explicit"]:
                 subtitle_clamp = Adw.Clamp(maximum_size=140)

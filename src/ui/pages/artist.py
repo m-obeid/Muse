@@ -157,7 +157,6 @@ class ArtistPage(Adw.Bin):
         self.description_label.set_lines(0)
         self.description_label.set_ellipsize(Pango.EllipsizeMode.NONE)
         self.description_label.set_margin_top(12)
-        self.info_overlay_box.append(self.description_label)
 
         self.read_more_btn = Gtk.Button(label="Read more")
         self.read_more_btn.add_css_class("flat")
@@ -167,7 +166,15 @@ class ArtistPage(Adw.Bin):
         self.read_more_btn.set_cursor(Gdk.Cursor.new_from_name("pointer"))
         self.read_more_btn.connect("clicked", self._on_read_more_toggle)
         self._description_expanded = False
-        self.info_overlay_box.append(self.read_more_btn)
+
+        self.description_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        self.description_box.set_margin_start(16)
+        self.description_box.set_margin_end(16)
+        self.description_box.set_margin_top(0)
+        self.description_box.set_margin_bottom(16)
+        self.description_box.append(self.description_label)
+        self.description_box.append(self.read_more_btn)
+        content_box.append(self.description_box)
 
         # 2. Sections
         self.sections_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=32)
@@ -329,10 +336,6 @@ class ArtistPage(Adw.Bin):
         if thumbnails:
             self.avatar.load_url(thumbnails[-1]["url"])
 
-        # We keep the sections_box but clear sections that aren't in the new data
-        # Actually for simplicity when switching artists, just clear all.
-        # But for Load More, we want to keep them.
-
         # Determine if we are updating or doing a fresh load
         is_refresh = getattr(self, "_is_ui_init", False)
         if not is_refresh:
@@ -352,7 +355,7 @@ class ArtistPage(Adw.Bin):
         if "albums" in data:
             self.add_grid_section("Albums", data["albums"])
 
-        # Singles - ytmusicapi uses 'singles' or 'singles & eps' sometimes, but we check common ones
+        # Singles
         if "singles" in data:
             self.add_grid_section("Singles & EPs", data["singles"])
 
@@ -396,11 +399,21 @@ class ArtistPage(Adw.Bin):
         showing_items = items[:limit]
 
         for item in showing_items:
-            row = Adw.ActionRow()
-            row.set_activatable(True)
+            row = Gtk.ListBoxRow()
+            box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+            box.add_css_class("song-row")
+            row.set_child(box)
+
+            # Thumbnail
+            thumbnails = item.get("thumbnails", [])
+            thumb_url = thumbnails[-1]["url"] if thumbnails else None
+            from ui.utils import AsyncPicture
+
+            img = AsyncPicture(url=thumb_url, target_size=44, crop_to_square=True)
+            img.add_css_class("song-img")
+            box.append(img)
 
             song_title = item.get("title", "Unknown")
-            row.set_title(GLib.markup_escape_text(song_title))
 
             # Artists
             artist_list = item.get("artists", [])
@@ -431,7 +444,24 @@ class ArtistPage(Adw.Bin):
                 else:
                     subtitle = album_name
 
-            row.set_subtitle(GLib.markup_escape_text(subtitle or ""))
+            vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            vbox.set_valign(Gtk.Align.CENTER)
+            vbox.set_hexpand(True)
+
+            title_label = Gtk.Label(label=song_title)
+            title_label.set_halign(Gtk.Align.START)
+            title_label.set_ellipsize(Pango.EllipsizeMode.END)
+            title_label.set_lines(1)
+
+            subtitle_label = Gtk.Label(label=subtitle or "")
+            subtitle_label.set_halign(Gtk.Align.START)
+            subtitle_label.set_ellipsize(Pango.EllipsizeMode.END)
+            subtitle_label.set_lines(1)
+            subtitle_label.add_css_class("dim-label")
+            subtitle_label.add_css_class("caption")
+
+            title_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+            title_box.append(title_label)
 
             # Explicit Badge
             meta = parse_item_metadata(item)
@@ -439,7 +469,11 @@ class ArtistPage(Adw.Bin):
                 explicit_badge = Gtk.Label(label="E")
                 explicit_badge.add_css_class("explicit-badge")
                 explicit_badge.set_valign(Gtk.Align.CENTER)
-                row.add_suffix(explicit_badge)
+                title_box.append(explicit_badge)
+
+            vbox.append(title_box)
+            vbox.append(subtitle_label)
+            box.append(vbox)
 
             # Duration Suffix
             duration = item.get("duration") or ""
@@ -452,22 +486,16 @@ class ArtistPage(Adw.Bin):
                 dur_label.add_css_class("caption")
                 dur_label.set_opacity(0.7)
                 dur_label.set_valign(Gtk.Align.CENTER)
-                row.add_suffix(dur_label)
+                dur_label.set_margin_end(6)
+                box.append(dur_label)
 
             # Like Button
             if item.get("videoId"):
                 like_btn = LikeButton(
                     self.client, item["videoId"], item.get("likeStatus", "INDIFFERENT")
                 )
-                row.add_suffix(like_btn)
-
-            thumbnails = item.get("thumbnails", [])
-            thumb_url = thumbnails[-1]["url"] if thumbnails else None
-
-            img = AsyncImage(url=thumb_url, size=40)
-            if not thumb_url:
-                img.set_from_icon_name("media-optical-symbolic")
-            row.add_prefix(img)
+                like_btn.set_valign(Gtk.Align.CENTER)
+                box.append(like_btn)
 
             row.item_data = item
             list_box.append(row)
@@ -1094,17 +1122,74 @@ class ArtistPage(Adw.Bin):
             self.player.set_queue(self._build_queue_tracks(), -1, shuffle=True)
 
     def _on_read_more_toggle(self, btn):
-        clean = getattr(self, "_description_clean", "")
-        if not clean:
-            return
-        self._description_expanded = not getattr(self, "_description_expanded", False)
+        self._description_expanded = not self._description_expanded
         if self._description_expanded:
-            self.description_label.set_label(clean)
-            self.read_more_btn.set_label("Show less")
+            self.description_label.set_label(self._description_clean)
+            self.description_label.set_lines(0)
+            self.read_more_btn.set_label("Read less")
         else:
-            preview = clean[:280].rsplit(" ", 1)[0] + "…"
+            preview = self._description_clean[:280].rsplit(" ", 1)[0] + "…"
             self.description_label.set_label(preview)
+            self.description_label.set_lines(3)
             self.read_more_btn.set_label("Read more")
+
+    def on_banner_right_click(self, gesture, n_press, x, y):
+        url = getattr(self.avatar, "url", None)
+        if not url:
+            return
+
+        menu = Gio.Menu()
+        menu.append("Copy Banner URL", "banner.copy_url")
+
+        action = Gio.SimpleAction.new("copy_url", None)
+        action.set_enabled(True)
+        from ui.utils import copy_to_clipboard
+
+        action.connect("activate", lambda *_: copy_to_clipboard(url))
+
+        group = Gio.SimpleActionGroup()
+        group.add_action(action)
+        self.banner_overlay.insert_action_group("banner", group)
+
+        popover = Gtk.PopoverMenu.new_from_model(menu)
+        popover.set_parent(self.banner_overlay)
+        # Point to x,y relative to gesture target
+        rect = Gdk.Rectangle()
+        rect.x, rect.y, rect.width, rect.height = x, y, 1, 1
+        popover.set_pointing_to(rect)
+        popover.popup()
+
+    def set_compact_mode(self, compact):
+        if compact:
+            self.add_css_class("compact")
+            self.banner_overlay.set_size_request(-1, 200)
+            self.banner_wrapper.set_size_request(-1, 200)
+            self.info_overlay_box.set_margin_top(120)
+
+            self.info_overlay_box.set_halign(Gtk.Align.START)
+            self.banner_wrapper.set_halign(Gtk.Align.FILL)
+            self.avatar.set_halign(Gtk.Align.FILL)
+            self.avatar.set_hexpand(True)
+
+            self.name_label.set_halign(Gtk.Align.START)
+            self.subscribers_label.set_halign(Gtk.Align.START)
+            self.description_label.set_halign(Gtk.Align.START)
+            self.read_more_btn.set_halign(Gtk.Align.START)
+        else:
+            self.remove_css_class("compact")
+            self.banner_overlay.set_size_request(-1, 260)
+            self.banner_wrapper.set_size_request(-1, 260)
+            self.info_overlay_box.set_margin_top(160)
+
+            self.info_overlay_box.set_halign(Gtk.Align.START)
+            self.banner_wrapper.set_halign(Gtk.Align.FILL)
+            self.avatar.set_halign(Gtk.Align.FILL)
+            self.avatar.set_hexpand(True)
+
+            self.name_label.set_halign(Gtk.Align.START)
+            self.subscribers_label.set_halign(Gtk.Align.START)
+            self.description_label.set_halign(Gtk.Align.START)
+            self.read_more_btn.set_halign(Gtk.Align.START)
 
     def _on_scroll(self, vadjust):
         if vadjust.get_value() > 100:

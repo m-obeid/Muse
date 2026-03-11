@@ -153,7 +153,7 @@ Here are install commands for some common package managers:
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/m-obeid/Muse.git
+   git clone https://github.com/m-obeid/Mixtapes.git
    cd Muse
    ```
 
@@ -218,7 +218,7 @@ flatpak install --user ./Mixtapes-x86_64.flatpak
 2. Clone the repository:
 
    ```bash
-   git clone https://github.com/m-obeid/Muse.git
+   git clone https://github.com/m-obeid/Mixtapes.git
    cd Muse
    ```
 
